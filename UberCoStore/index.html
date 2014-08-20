@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang='en' ng-app>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <title>Über Co. Online Store</title>
+
+    <script src="js/jquery-2.0.3.js"></script>
+    <script src="js/jquery-ui-1.10.3.custom.js"></script>
+    <script src="js/bootstrap.js"></script>
+    <script src="js/angular.js"></script>
+    <script src="js/controllers.js"></script>
+    <script src="js/main.js"></script>
+
+    <link rel="stylesheet" href="css/bootstrap.css">
+    <link rel="stylesheet" href="css/dot-luv/jquery-ui-1.10.3.custom.css">
+    <link rel="stylesheet" href="css/main.css">
+
+</head>
+<body ng-controller="InventoryController">
+    <div id="team-selector" class="centered">
+        <img src="img/Uber%20Co.png" style="width: 300px; margin-top: -200px; margin-left: auto; margin-right: auto;">
+        <h3 class="text-center">Select your team to begin</h3>
+        <div class="inventory-item" ng-repeat="team in teams" style="background-color: {{team.colour}}" ng-click="selectTeam(team)">
+            <h3>{{team.name}}</h3>
+        </div>
+    </div>
+    <div id="main-container" class="container border" style="display:none">
+        <img src="img/Uber%20Co.png" style="width: 300px;">
+        <div id="selected-team" style="color: {{selectedTeam.colour}}; font-size: 20px;">
+             Current Team: {{selectedTeam.name}} <a href="#" ng-click="logout()">Logout</a>
+        </div>
+        <div class="spacer"></div>
+        <div id="reward-button" class="tab-button border" style="margin-left: 470px;">Rewards</div>
+        <div id="inventory-button" class="tab-button border selected" style="margin-left: 540px;">Inventory</div>
+        <div id="main-content" class="border">
+            <div id="inventory">
+                <div class="inventory-item border" ng-repeat="item in inventory" ng-click="setSelectedItem(item)">
+                    <img ng-src={{getImageString(item.image)}} style="width: 135px; height: 120px;">
+                    {{getFormattedName(item.name, 18)}}
+                </div>
+                <p style="padding: 10px" class="text-center" ng-show="!inventory[0]">
+                    You currently have no items in your inventory!  Scan a card to add it to your inventory.
+                </p>
+            </div>
+            <div id="rewards" style="display: none;">
+                <div class="inventory-item border" ng-repeat="reward in rewards" ng-click="setSelectedItem(reward)">
+                    <img src='img/reward.png' style="width: 135px; height: 120px;">
+                    {{getFormattedName(reward.name, 18)}}
+                </div>
+                <p style="padding: 10px" class="text-center" ng-show="!rewards[0]">
+                    You currently have no rewards!  Open chests to earn rewards!.
+                </p>
+            </div>
+        </div>
+
+        <div id="details" class="border">
+            <div class="spacer-details"></div>
+            <img class="details-image" ng-show="selectedItem" ng-src={{getImageString(selectedItem.image)}}>
+            <p style="margin-top: -14px;" class="text-center" ng-show="!selectedItem">
+                You currently have no selected items!
+            </p>
+            <h3 class="centered-text">{{selectedItem.name}}</h3>
+            <p style="padding: 10px;">
+                {{selectedItem.description}}
+            </p>
+            <h3 class="centered-text" style="color: #ddaa00">{{getRarityString(selectedItem.rarity)}}</h3>
+            <h4 style="padding: 10px; padding-bottom: 0px;" ng-show="selectedItem.is_chest">Keys Required:</h4>
+            <ul ng-show='selectedItem.is_chest'>
+                <li ng-repeat="key in requiredKeys" class="key-list-item" ng-class="{owned:key.owned}">{{getItemName(key.id)}}</li>
+            </ul>
+            <div id="open-chest" class="open-button" ng-show="selectedItem.is_chest" ng-class="{inactive:!canOpenChest(selectedItem.id, selectedItem.is_chest)}">Open Chest!</div>
+        </div>
+        <div class="spacer2"></div>
+        <h2 class="text-center">Scan an item to add to your inventory.</h2>
+        <div class="scan-area centered">
+<!--
+            <input id="item-to-add" tabindex="0" type="text">
+-->
+        </div>
+    </div>
+
+    <div id="item-message" title="{{addedItem.name}} has been added to your inventory!" style="display: none;">
+        <p>
+            <img class="details-image" ng-src={{getImageString(addedItem.image)}} style="margin-top: 15px; margin-bottom: 15px;">
+            {{addedItem.description}}
+        </p>
+    </div>
+
+    <div id="reward-message" title="You earned a reward!" style="display: none;">
+        <p>
+            <h3>{{reward.name}}</h3>
+            <img class="details-image" src="img/reward.png" style="margin-top: 15px; margin-bottom: 15px;">
+            {{reward.description}}<br><br>
+            <h3>Please see Michael McClenaghan to receive your reward.</h3>
+        </p>
+    </div>
+
+    <div id="error-message" title="Error" style="display: none;">
+        <p>
+            {{errorMessage}}
+        </p>
+    </div>
+</body>
+</html>
