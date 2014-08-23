@@ -34,38 +34,45 @@ def request_cleanup(response):
 
 @app.errorhandler(404)
 def not_found(error):
-    return make_response(json.dumps( { 'error': 'Not found, check URL' } ), 404)
+    return make_response(json.dumps({'error': 'Not found, check URL'}), 404)
+
 
 @app.route("/<team_id>/cards/redeem/<card_id>/")
 def redeem_card(team_id, card_id):
     try:
-        g.cursor.execute('SELECT id, valid, type FROM card WHERE id = %d' % card_id)
+        g.cursor.execute('SELECT id, valid, type FROM card WHERE id = %s' % card_id)
+        card_id, card_valid, card_type = g.cursor.fetchone()
+        print 'Scanned card: ', card_id
+    except TypeError, e:
+        print e
+        return make_response(json.dumps({'error': 'Card not found'}), 400)
 
-        card_id, card_valid, card_type = cursor.fetchone()
-        print "Scanned card: ", card_id
-    except:
-        return make_response(json.dumps( { 'error': 'Card not found' } ), 400)
-    
     if card_valid == 0:
-        return make_response(json.dumps( { 'error': 'Card has already been redeemed' } ), 400)
+        return make_response(json.dumps({'error': 'Card has already been redeemed'}), 400)
 
     try:
-        g.cursor.execute("INSERT INTO team_items VALUES(%d, %s)" % team_id, str(card_type))
+        g.cursor.execute("UPDATE card \
+                         SET valid=0 \
+                         WHERE id=" + str(card_id) + ";")
+        g.cursor.execute("INSERT INTO team_items VALUES(%s, %s)" % (team_id, card_type))
         g.db.commit()
-    except:
-        return make_response(json.dumps( { 'error': 'Database failed to update' } ), 400)
+    except Exception, e:
+        print e
         g.db.rollback()
+        return make_response(json.dumps({'error': 'Database failed to update'}), 400)
 
     try:
         g.cursor.execute("SELECT id,name,description,is_chest,rarity,image \
                         FROM item \
                         WHERE id = " + str(card_type) + ";")
-        item_id, item_name, item_description, item_is_chest, item_rarity, item_image = cursor.fetchone()
+        item_id, item_name, item_description, item_is_chest, item_rarity, item_image = g.cursor.fetchone()
 
         return make_response(json.dumps({"id": item_id, "name": item_name, "description": item_description, \
-            "is_chest": bool(item_is_chest), "rarity": item_rarity, "image": item_image}), 200)
+                                         "is_chest": bool(item_is_chest), "rarity": item_rarity, "image": item_image}),
+                             200)
     except:
-        return make_response(json.dumps( { 'error': 'Failed to get item from card' } ), 400)
+        return make_response(json.dumps({'error': 'Failed to get item from card'}), 400)
+
 
 @app.route("/<team_id>/chests/redeem/<chest_id>/")
 def redeem_chest(team_id, chest_id):
@@ -77,46 +84,46 @@ def redeem_chest(team_id, chest_id):
                         INNER JOIN item \
                         ON item.id = team_items.item_id \
                         WHERE team_id = " + team_id + \
-                        " AND item_id = " + chest_id)
-        item_id, item_rarity, is_chest = cursor.fetchone()
+                       " AND item_id = " + chest_id)
+        item_id, item_rarity, is_chest = g.cursor.fetchone()
 
         if is_chest == 0:
-            return make_response(json.dumps( { 'error': 'Attempting to redeem key, not chest' } ), 400)
+            return make_response(json.dumps({'error': 'Attempting to redeem key, not chest'}), 400)
     except:
-        return make_response(json.dumps( { 'error': 'Your team does not own this chest!' } ), 400) 
-    
+        return make_response(json.dumps({'error': 'Your team does not own this chest!'}), 400)
+
     try:
         chest_keys = get_chest_keys(chest_id)['keys']
         items = get_team_item_ids(team_id)
     except:
-        return make_response(json.dumps( { 'error': 'Failed to get required keys!' } ), 400)     
-    
+        return make_response(json.dumps({'error': 'Failed to get required keys!'}), 400)
+
     for item in chest_keys:
         try:
             items.remove(item)
         except:
-            return make_response(json.dumps( { 'error': 'Your team does not have the required keys!' } ), 400)
+            return make_response(json.dumps({'error': 'Your team does not have the required keys!'}), 400)
 
     # Remove required keys from team inventory
     for item in chest_keys:
         try:
             g.cursor.execute("DELETE FROM team_items \
                             WHERE team_id = " + team_id + \
-                            " AND item_id = " + str(item) + \
-                            " LIMIT 1")
+                           " AND item_id = " + str(item) + \
+                           " LIMIT 1")
             g.db.commit()
         except:
-            return make_response(json.dumps( { 'error': 'Failed to remove items from database' } ), 400)
+            return make_response(json.dumps({'error': 'Failed to remove items from database'}), 400)
 
     # Remove the chest itself from the inventory
     try:
         g.cursor.execute("DELETE FROM team_items \
                         WHERE team_id = " + team_id + \
-                        " AND item_id = " + chest_id + \
-                        " LIMIT 1")
+                       " AND item_id = " + chest_id + \
+                       " LIMIT 1")
         g.db.commit()
     except:
-        return make_response(json.dumps( { 'error': 'Failed to remove items from database' } ), 400)
+        return make_response(json.dumps({'error': 'Failed to remove items from database'}), 400)
 
     try:
         g.cursor.execute("SELECT id,name,description,rarity,numberRemaining \
@@ -124,14 +131,14 @@ def redeem_chest(team_id, chest_id):
                         WHERE numberRemaining != 0")
         results = g.cursor.fetchall()
     except:
-        return make_response(json.dumps( { 'error': 'Failed to get rewards from database' } ), 400)
+        return make_response(json.dumps({'error': 'Failed to get rewards from database'}), 400)
 
     for result in results:
         reward_id, reward_name, reward_description, reward_rarity, rewards_remaining = result
         rewards.append({"id": reward_id, "name": reward_name, "description": reward_description, \
-            "rarity": reward_rarity, "remaining": rewards_remaining, "image": "reward.png"})        
+                        "rarity": reward_rarity, "remaining": rewards_remaining, "image": "reward.png"})
 
-    reward = select_reward(rewards, item_rarity)   
+    reward = select_reward(rewards, item_rarity)
 
     try:
         g.cursor.execute("UPDATE reward " + \
@@ -139,33 +146,35 @@ def redeem_chest(team_id, chest_id):
                        " WHERE id = " + str(reward['id']))
         g.db.commit()
     except:
-        return make_response(json.dumps( { 'error': 'Failed to subtract 1 from remaining rewards' } ), 400)
+        return make_response(json.dumps({'error': 'Failed to subtract 1 from remaining rewards'}), 400)
 
     try:
         g.cursor.execute("INSERT INTO team_rewards \
                         VALUES(" + team_id + "," + str(reward['id']) + ",0" + ");")
         g.db.commit()
     except:
-        return make_response(json.dumps( { 'error': 'Failed to add reward to team' } ), 400)
+        return make_response(json.dumps({'error': 'Failed to add reward to team'}), 400)
 
     return json.dumps(reward)
 
+
 def select_reward(rewards, reward_level):
-    num_rewards = len(rewards[reward_level-1])
+    num_rewards = len(rewards[reward_level - 1])
     if num_rewards == 0:
         return False
     else:
-        return rewards[random.randint(0,num_rewards-1)]
+        return rewards[random.randint(0, num_rewards - 1)]
+
 
 @app.route("/<team_id>/rewards/redeem/<reward_id>/")
 def redeem_reward(team_id, reward_id):
     try:
         g.cursor.execute("DELETE FROM team_rewards \
                     WHERE team_id = " + team_id + \
-                    " AND reward_id = " + str(reward_id) + \
-                    " LIMIT 1")
+                       " AND reward_id = " + str(reward_id) + \
+                       " LIMIT 1")
     except:
-        return make_response(json.dumps( { 'error': 'Failed to remove reward from team' } ), 400)
+        return make_response(json.dumps({'error': 'Failed to remove reward from team'}), 400)
 
 
 @app.route("/<team_id>/items/")
@@ -180,8 +189,9 @@ def get_team_items(team_id):
     for result in results:
         item_id, item_name, item_description, item_is_chest, item_rarity, item_image = result
         items.append({"id": item_id, "name": item_name, "description": item_description, \
-            "is_chest": item_is_chest, "rarity": item_rarity, "image": item_image})
+                      "is_chest": item_is_chest, "rarity": item_rarity, "image": item_image})
     return json.dumps(items)
+
 
 @app.route("/<team_id>/rewards/")
 def get_team_rewards(team_id):
@@ -196,9 +206,10 @@ def get_team_rewards(team_id):
     for result in results:
         reward_id, reward_name, reward_description, reward_rarity = result
         rewards.append({"id": reward_id, "name": reward_name, "description": reward_description, \
-            "rarity": reward_rarity, "image": "reward.png"})
+                        "rarity": reward_rarity, "image": "reward.png"})
 
     return json.dumps(rewards)
+
 
 def get_team_item_ids(team_id):
     items = []
@@ -210,6 +221,7 @@ def get_team_item_ids(team_id):
         item_id = result[0]
         items.append(item_id)
     return items
+
 
 def get_chest_keys(chest_id):
     relationships = []
@@ -252,6 +264,7 @@ def get_all_chest_keys():
         used_chests.append(chest_id)
     return json.dumps(relationships)
 
+
 @app.route("/cards/list/")
 def get_cards():
     cards = []
@@ -263,6 +276,7 @@ def get_cards():
         cards.append({"id": card_id, "valid": bool(card_valid), "type": card_type})
     return json.dumps(cards)
 
+
 @app.route("/items/list/")
 def get_items():
     items = []
@@ -272,8 +286,9 @@ def get_items():
     for result in results:
         item_id, item_name, item_description, item_is_chest, item_rarity, item_image = result
         items.append({"id": item_id, "name": item_name, "description": item_description, \
-            "is_chest": item_is_chest, "rarity": item_rarity, "image": item_image})
+                      "is_chest": item_is_chest, "rarity": item_rarity, "image": item_image})
     return json.dumps(items)
+
 
 @app.route("/teams/list/")
 def get_teams():
@@ -285,6 +300,7 @@ def get_teams():
         team_id, team_name, team_colour = result
         teams.append({"id": team_id, "name": team_name, "colour": team_colour})
     return json.dumps(teams)
+
 
 if __name__ == "__main__":
     app.run(port=5051, host='0.0.0.0')
