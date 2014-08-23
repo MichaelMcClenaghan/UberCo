@@ -1,14 +1,26 @@
 from flask import Flask
 from flask import make_response, request
 import json
+import os
 import random
 import sqlite3
 
 app = Flask(__name__)
 app.debug = True
 
-db = sqlite3.connect('database.db')
-cursor = db.cursor()
+if os.path.exists('database.db'):
+    db = sqlite3.connect('database.db')
+    cursor = db.cursor()
+
+
+@app.before_request
+def check_database():
+    if request.method == "OPTIONS":
+        return
+
+    if not os.path.exists('database.db'):
+        return make_response(json.dumps({'error': 'Database not ready'}), 500)
+
 
 @app.errorhandler(404)
 def not_found(error):
