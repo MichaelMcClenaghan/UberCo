@@ -24,7 +24,7 @@ def jsonify(data, status_code=200):
 
 @app.before_request
 def check_database():
-    if request.method == "OPTIONS":
+    if request.method == 'OPTIONS':
         return
 
     if not os.path.exists('database.db'):
@@ -42,12 +42,13 @@ def request_cleanup(response):
 
 @app.errorhandler(404)
 def not_found(error):
-    return jsonify({'error': 'Not found, check URL'}, 404)
+    return jsonify({'error': error.description}, 404)
 
 
-@app.route("/<team_id>/cards/redeem/<card_id>/")
+@app.route('/<team_id>/cards/redeem/<card_id>/')
 def redeem_card(team_id, card_id):
-
+    """Adds a card to a team's inventory and marks the card as used.
+    Occurs when a team member scans a card."""
     g.cursor.execute('SELECT id, valid, type FROM card WHERE id = ?', (card_id,))
     row = g.cursor.fetchone()
     if row is None:
@@ -69,92 +70,59 @@ def redeem_card(team_id, card_id):
         return jsonify({'error': 'Failed to find the item that belongs to this card'}, 400)
 
     item_id, item_name, item_description, item_is_chest, item_rarity, item_image = row
-    return jsonify({"id": item_id, "name": item_name, "description": item_description,
-                                     "is_chest": bool(item_is_chest), "rarity": item_rarity, "image": item_image})
+    return jsonify({'id': item_id, 'name': item_name, 'description': item_description, 'is_chest': bool(item_is_chest),
+                    'rarity': item_rarity, 'image': item_image})
 
 
-@app.route("/<team_id>/chests/redeem/<chest_id>/")
+@app.route('/<team_id>/chests/redeem/<chest_id>/')
 def redeem_chest(team_id, chest_id):
+    """Verifies that a team has all the keys for a particular chest and selects a random reward for the team.
+    This process removes the keys and chest from the team's inventory."""
     rewards = []
 
-    try:
-        g.cursor.execute("SELECT item_id,rarity,is_chest \
-                        FROM team_items \
-                        INNER JOIN item \
-                        ON item.id = team_items.item_id \
-                        WHERE team_id = " + team_id + \
-                       " AND item_id = " + chest_id)
-        item_id, item_rarity, is_chest = g.cursor.fetchone()
+    g.cursor.execute('SELECT item_id, rarity, is_chest FROM team_items JOIN item ON item.id = team_items.item_id '
+                     'WHERE team_id = ? AND item_id = ?', (team_id, chest_id))
+    row = g.cursor.fetchone()
+    if row is None:
+        return jsonify({'error': 'Your team does not own this chest!'}, 400)
 
-        if is_chest == 0:
-            return make_response(json.dumps({'error': 'Attempting to redeem key, not chest'}), 400)
-    except:
-        return make_response(json.dumps({'error': 'Your team does not own this chest!'}), 400)
+    item_id, item_rarity, is_chest = row
+    if is_chest == 0:
+        return jsonify({'error': 'Attempting to redeem key, not chest'}, 400)
 
     try:
         chest_keys = get_chest_keys(chest_id)['keys']
         items = get_team_item_ids(team_id)
     except:
-        return make_response(json.dumps({'error': 'Failed to get required keys!'}), 400)
+        return jsonify({'error': 'Failed to get required keys!'}, 400)
 
     for item in chest_keys:
         try:
             items.remove(item)
-        except:
-            return make_response(json.dumps({'error': 'Your team does not have the required keys!'}), 400)
+        except ValueError:
+            return jsonify({'error': 'Your team does not have the required keys!'}, 400)
 
-    # Remove required keys from team inventory
-    for item in chest_keys:
-        try:
-            g.cursor.execute("DELETE FROM team_items \
-                            WHERE team_id = " + team_id + \
-                           " AND item_id = " + str(item) + \
-                           " LIMIT 1")
-            g.db.commit()
-        except:
-            return make_response(json.dumps({'error': 'Failed to remove items from database'}), 400)
+    # Remove required keys and the chest from the team inventory
+    for item in chest_keys.append(chest_id):
+        g.cursor.execute('DELETE FROM team_items WHERE team_id = ? AND item_id = ?', (team_id, item))
+    g.db.commit()
 
-    # Remove the chest itself from the inventory
-    try:
-        g.cursor.execute("DELETE FROM team_items \
-                        WHERE team_id = " + team_id + \
-                       " AND item_id = " + chest_id + \
-                       " LIMIT 1")
-        g.db.commit()
-    except:
-        return make_response(json.dumps({'error': 'Failed to remove items from database'}), 400)
-
-    try:
-        g.cursor.execute("SELECT id,name,description,rarity,numberRemaining \
-                        FROM reward \
-                        WHERE numberRemaining != 0")
-        results = g.cursor.fetchall()
-    except:
-        return make_response(json.dumps({'error': 'Failed to get rewards from database'}), 400)
+    g.cursor.execute('SELECT id, name, description, rarity, numberRemaining FROM reward WHERE numberRemaining != 0')
+    results = g.cursor.fetchall()
+    if len(results) == 0:
+        return jsonify({'error': 'There are no rewards left!'}, 400)
 
     for result in results:
         reward_id, reward_name, reward_description, reward_rarity, rewards_remaining = result
-        rewards.append({"id": reward_id, "name": reward_name, "description": reward_description, \
-                        "rarity": reward_rarity, "remaining": rewards_remaining, "image": "reward.png"})
+        rewards.append({'id': reward_id, 'name': reward_name, 'description': reward_description,
+                        'rarity': reward_rarity, 'remaining': rewards_remaining, 'image': 'reward.png'})
 
     reward = select_reward(rewards, item_rarity)
 
-    try:
-        g.cursor.execute("UPDATE reward " + \
-                       "SET numberRemaining=" + str(rewards_remaining - 1) + \
-                       " WHERE id = " + str(reward['id']))
-        g.db.commit()
-    except:
-        return make_response(json.dumps({'error': 'Failed to subtract 1 from remaining rewards'}), 400)
+    g.cursor.execute('UPDATE reward SET numberRemaining = numberRemaining - 1 WHERE id = ?', (reward['id']),)
+    g.cursor.execute('INSERT INTO team_rewards VALUES (?, ?, 0)', (team_id, reward['id'], 0))
 
-    try:
-        g.cursor.execute("INSERT INTO team_rewards \
-                        VALUES(" + team_id + "," + str(reward['id']) + ",0" + ");")
-        g.db.commit()
-    except:
-        return make_response(json.dumps({'error': 'Failed to add reward to team'}), 400)
-
-    return json.dumps(reward)
+    return jsonify(reward)
 
 
 def select_reward(rewards, reward_level):
