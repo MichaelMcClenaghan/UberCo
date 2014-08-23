@@ -103,7 +103,8 @@ def redeem_chest(team_id, chest_id):
             return jsonify({'error': 'Your team does not have the required keys!'}, 400)
 
     # Remove required keys and the chest from the team inventory
-    for item in chest_keys.append(chest_id):
+    chest_keys.append(chest_id)
+    for item in chest_keys:
         g.cursor.execute('DELETE FROM team_items WHERE team_id = ? AND item_id = ?', (team_id, item))
     g.db.commit()
 
@@ -119,8 +120,8 @@ def redeem_chest(team_id, chest_id):
 
     reward = select_reward(rewards, item_rarity)
 
-    g.cursor.execute('UPDATE reward SET numberRemaining = numberRemaining - 1 WHERE id = ?', (reward['id']),)
-    g.cursor.execute('INSERT INTO team_rewards VALUES (?, ?, 0)', (team_id, reward['id'], 0))
+    g.cursor.execute('UPDATE reward SET numberRemaining = numberRemaining - 1 WHERE id = ?', (reward['id'],))
+    g.cursor.execute('INSERT INTO team_rewards VALUES (?, ?, 0)', (team_id, reward['id']))
 
     return jsonify(reward)
 
