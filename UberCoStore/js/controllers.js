@@ -1,5 +1,5 @@
 function InventoryController($scope, $http) {
-    $scope.apiAddress = 'http://ubuntu.local:5051';
+    $scope.apiAddress = 'http://localhost:5051';
 
     $scope.requiredKeys = []
     $scope.currentBarcode = [];
@@ -292,7 +292,7 @@ function InventoryController($scope, $http) {
         $scope.selectedTeam = undefined;
     }
 
-    $http.get($scope.apiAddress+'/teams/list').success(function(data) {
+    $http.get($scope.apiAddress+'/teams/list/').success(function(data) {
         $scope.teams = data.sort($scope.sortById);
     }).error(function(data) {
             $scope.displayError(data);
