@@ -1,12 +1,16 @@
-from flask import Flask
-from flask import make_response, request
 import json
 import os
 import random
 import sqlite3
 
+from flask import Flask
+from flask import make_response
+from flask import request
+from flask_cors import CORS
+
 app = Flask(__name__)
 app.debug = True
+cors = CORS(app, headers=['Content-Type', 'X-Requested-With'])
 
 if os.path.exists('database.db'):
     db = sqlite3.connect('database.db')
