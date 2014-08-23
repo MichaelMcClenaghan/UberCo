@@ -3,6 +3,7 @@ import os
 import random
 import sqlite3
 
+import flask
 from flask import Flask
 from flask import g
 from flask import make_response
@@ -12,6 +13,13 @@ from flask_cors import CORS
 app = Flask(__name__)
 app.debug = True
 cors = CORS(app, headers=['Content-Type', 'X-Requested-With'])
+
+
+def jsonify(data, status_code=200):
+    """A wrapper for flask.jsonify that allows you to set the response code."""
+    response = flask.jsonify(data)
+    response.status_code = status_code
+    return response
 
 
 @app.before_request
@@ -34,44 +42,35 @@ def request_cleanup(response):
 
 @app.errorhandler(404)
 def not_found(error):
-    return make_response(json.dumps({'error': 'Not found, check URL'}), 404)
+    return jsonify({'error': 'Not found, check URL'}, 404)
 
 
 @app.route("/<team_id>/cards/redeem/<card_id>/")
 def redeem_card(team_id, card_id):
-    try:
-        g.cursor.execute('SELECT id, valid, type FROM card WHERE id = %s' % card_id)
-        card_id, card_valid, card_type = g.cursor.fetchone()
-        print 'Scanned card: ', card_id
-    except TypeError, e:
-        print e
-        return make_response(json.dumps({'error': 'Card not found'}), 400)
+
+    g.cursor.execute('SELECT id, valid, type FROM card WHERE id = ?', (card_id,))
+    row = g.cursor.fetchone()
+    if row is None:
+        return jsonify({'error': 'Card not found'}, 400)
+
+    card_id, card_valid, card_type = row
+    print 'Scanned card:', card_id
 
     if card_valid == 0:
-        return make_response(json.dumps({'error': 'Card has already been redeemed'}), 400)
+        return jsonify({'error': 'Card has already been redeemed'}, 400)
 
-    try:
-        g.cursor.execute("UPDATE card \
-                         SET valid=0 \
-                         WHERE id=" + str(card_id) + ";")
-        g.cursor.execute("INSERT INTO team_items VALUES(%s, %s)" % (team_id, card_type))
-        g.db.commit()
-    except Exception, e:
-        print e
-        g.db.rollback()
-        return make_response(json.dumps({'error': 'Database failed to update'}), 400)
+    g.cursor.execute('UPDATE card SET valid = 0 WHERE id = ?', (card_id,))
+    g.cursor.execute('INSERT INTO team_items VALUES (?, ?)', (team_id, card_type))
+    g.db.commit()
 
-    try:
-        g.cursor.execute("SELECT id,name,description,is_chest,rarity,image \
-                        FROM item \
-                        WHERE id = " + str(card_type) + ";")
-        item_id, item_name, item_description, item_is_chest, item_rarity, item_image = g.cursor.fetchone()
+    g.cursor.execute('SELECT id, name, description, is_chest, rarity, image FROM item WHERE id = ?', (card_type,))
+    row = g.cursor.fetchone()
+    if row is None:
+        return jsonify({'error': 'Failed to find the item that belongs to this card'}, 400)
 
-        return make_response(json.dumps({"id": item_id, "name": item_name, "description": item_description, \
-                                         "is_chest": bool(item_is_chest), "rarity": item_rarity, "image": item_image}),
-                             200)
-    except:
-        return make_response(json.dumps({'error': 'Failed to get item from card'}), 400)
+    item_id, item_name, item_description, item_is_chest, item_rarity, item_image = row
+    return jsonify({"id": item_id, "name": item_name, "description": item_description,
+                                     "is_chest": bool(item_is_chest), "rarity": item_rarity, "image": item_image})
 
 
 @app.route("/<team_id>/chests/redeem/<chest_id>/")
