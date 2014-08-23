@@ -4,6 +4,7 @@ import random
 import sqlite3
 
 from flask import Flask
+from flask import g
 from flask import make_response
 from flask import request
 from flask_cors import CORS
@@ -11,10 +12,6 @@ from flask_cors import CORS
 app = Flask(__name__)
 app.debug = True
 cors = CORS(app, headers=['Content-Type', 'X-Requested-With'])
-
-if os.path.exists('database.db'):
-    db = sqlite3.connect('database.db')
-    cursor = db.cursor()
 
 
 @app.before_request
@@ -25,6 +22,15 @@ def check_database():
     if not os.path.exists('database.db'):
         return make_response(json.dumps({'error': 'Database not ready'}), 500)
 
+    g.db = sqlite3.connect('database.db')
+    g.cursor = g.db.cursor()
+
+
+@app.after_request
+def request_cleanup(response):
+    g.db.close()
+    return response
+
 
 @app.errorhandler(404)
 def not_found(error):
@@ -33,9 +39,7 @@ def not_found(error):
 @app.route("/<team_id>/cards/redeem/<card_id>/")
 def redeem_card(team_id, card_id):
     try:
-        cursor.execute("SELECT id,valid,type \
-                        FROM card \
-                        WHERE id = " + card_id)
+        g.cursor.execute('SELECT id, valid, type FROM card WHERE id = %d' % card_id)
 
         card_id, card_valid, card_type = cursor.fetchone()
         print "Scanned card: ", card_id
@@ -46,19 +50,14 @@ def redeem_card(team_id, card_id):
         return make_response(json.dumps( { 'error': 'Card has already been redeemed' } ), 400)
 
     try:
-        # cursor.execute("UPDATE card \
-        #                 SET valid=0 \
-        #                 WHERE id=" + str(card_id) + ";")
-
-        cursor.execute("INSERT INTO team_items \
-                        VALUES(" + team_id + "," + str(card_type) + ");")
-        db.commit()
+        g.cursor.execute("INSERT INTO team_items VALUES(%d, %s)" % team_id, str(card_type))
+        g.db.commit()
     except:
-        db.rollback()
         return make_response(json.dumps( { 'error': 'Database failed to update' } ), 400)
+        g.db.rollback()
 
     try:
-        cursor.execute("SELECT id,name,description,is_chest,rarity,image \
+        g.cursor.execute("SELECT id,name,description,is_chest,rarity,image \
                         FROM item \
                         WHERE id = " + str(card_type) + ";")
         item_id, item_name, item_description, item_is_chest, item_rarity, item_image = cursor.fetchone()
@@ -73,7 +72,7 @@ def redeem_chest(team_id, chest_id):
     rewards = []
 
     try:
-        cursor.execute("SELECT item_id,rarity,is_chest \
+        g.cursor.execute("SELECT item_id,rarity,is_chest \
                         FROM team_items \
                         INNER JOIN item \
                         ON item.id = team_items.item_id \
@@ -101,29 +100,29 @@ def redeem_chest(team_id, chest_id):
     # Remove required keys from team inventory
     for item in chest_keys:
         try:
-            cursor.execute("DELETE FROM team_items \
+            g.cursor.execute("DELETE FROM team_items \
                             WHERE team_id = " + team_id + \
                             " AND item_id = " + str(item) + \
                             " LIMIT 1")
-            db.commit()
+            g.db.commit()
         except:
             return make_response(json.dumps( { 'error': 'Failed to remove items from database' } ), 400)
 
     # Remove the chest itself from the inventory
     try:
-        cursor.execute("DELETE FROM team_items \
+        g.cursor.execute("DELETE FROM team_items \
                         WHERE team_id = " + team_id + \
                         " AND item_id = " + chest_id + \
                         " LIMIT 1")
-        db.commit()
+        g.db.commit()
     except:
         return make_response(json.dumps( { 'error': 'Failed to remove items from database' } ), 400)
 
     try:
-        cursor.execute("SELECT id,name,description,rarity,numberRemaining \
+        g.cursor.execute("SELECT id,name,description,rarity,numberRemaining \
                         FROM reward \
                         WHERE numberRemaining != 0")
-        results = cursor.fetchall()
+        results = g.cursor.fetchall()
     except:
         return make_response(json.dumps( { 'error': 'Failed to get rewards from database' } ), 400)
 
@@ -135,17 +134,17 @@ def redeem_chest(team_id, chest_id):
     reward = select_reward(rewards, item_rarity)   
 
     try:
-        cursor.execute("UPDATE reward " + \
-                        "SET numberRemaining=" + str(rewards_remaining-1) + \
-                        " WHERE id = " + str(reward['id']))
-        db.commit()
+        g.cursor.execute("UPDATE reward " + \
+                       "SET numberRemaining=" + str(rewards_remaining - 1) + \
+                       " WHERE id = " + str(reward['id']))
+        g.db.commit()
     except:
         return make_response(json.dumps( { 'error': 'Failed to subtract 1 from remaining rewards' } ), 400)
 
     try:
-        cursor.execute("INSERT INTO team_rewards \
+        g.cursor.execute("INSERT INTO team_rewards \
                         VALUES(" + team_id + "," + str(reward['id']) + ",0" + ");")
-        db.commit()
+        g.db.commit()
     except:
         return make_response(json.dumps( { 'error': 'Failed to add reward to team' } ), 400)
 
@@ -161,7 +160,7 @@ def select_reward(rewards, reward_level):
 @app.route("/<team_id>/rewards/redeem/<reward_id>/")
 def redeem_reward(team_id, reward_id):
     try:
-        cursor.execute("DELETE FROM team_rewards \
+        g.cursor.execute("DELETE FROM team_rewards \
                     WHERE team_id = " + team_id + \
                     " AND reward_id = " + str(reward_id) + \
                     " LIMIT 1")
@@ -172,12 +171,12 @@ def redeem_reward(team_id, reward_id):
 @app.route("/<team_id>/items/")
 def get_team_items(team_id):
     items = []
-    cursor.execute("SELECT item_id,name,description,is_chest,rarity,image \
+    g.cursor.execute("SELECT item_id,name,description,is_chest,rarity,image \
                     FROM team_items \
                     INNER JOIN item \
                     ON item.id = team_items.item_id \
                     WHERE team_id=" + team_id)
-    results = cursor.fetchall()
+    results = g.cursor.fetchall()
     for result in results:
         item_id, item_name, item_description, item_is_chest, item_rarity, item_image = result
         items.append({"id": item_id, "name": item_name, "description": item_description, \
@@ -187,12 +186,12 @@ def get_team_items(team_id):
 @app.route("/<team_id>/rewards/")
 def get_team_rewards(team_id):
     rewards = []
-    cursor.execute("SELECT reward_id,name,description,rarity \
+    g.cursor.execute("SELECT reward_id,name,description,rarity \
                     FROM team_rewards \
                     INNER JOIN reward \
                     ON reward.id = team_rewards.reward_id \
                     WHERE team_id=" + team_id)
-    results = cursor.fetchall()
+    results = g.cursor.fetchall()
 
     for result in results:
         reward_id, reward_name, reward_description, reward_rarity = result
@@ -203,10 +202,10 @@ def get_team_rewards(team_id):
 
 def get_team_item_ids(team_id):
     items = []
-    cursor.execute("SELECT item_id \
+    g.cursor.execute("SELECT item_id \
                     FROM team_items \
                     WHERE team_id=" + team_id)
-    results = cursor.fetchall()
+    results = g.cursor.fetchall()
     for result in results:
         item_id = result[0]
         items.append(item_id)
@@ -216,10 +215,10 @@ def get_chest_keys(chest_id):
     relationships = []
     used_chests = []
 
-    cursor.execute("SELECT chest_id,key_id \
+    g.cursor.execute("SELECT chest_id,key_id \
                     FROM chest_keys \
                     WHERE chest_id = " + chest_id)
-    results = cursor.fetchall()
+    results = g.cursor.fetchall()
 
     for result in results:
         chest_id, key_id = result
@@ -232,14 +231,15 @@ def get_chest_keys(chest_id):
         used_chests.append(chest_id)
     return relationships[0]
 
+
 @app.route("/chests/")
 def get_all_chest_keys():
     relationships = []
     used_chests = []
 
-    cursor.execute("SELECT chest_id,key_id \
+    g.cursor.execute("SELECT chest_id,key_id \
         FROM chest_keys")
-    results = cursor.fetchall()
+    results = g.cursor.fetchall()
 
     for result in results:
         chest_id, key_id = result
@@ -255,9 +255,9 @@ def get_all_chest_keys():
 @app.route("/cards/list/")
 def get_cards():
     cards = []
-    cursor.execute("SELECT id,valid,type \
+    g.cursor.execute("SELECT id,valid,type \
                     FROM card")
-    results = cursor.fetchall()
+    results = g.cursor.fetchall()
     for result in results:
         card_id, card_valid, card_type = result
         cards.append({"id": card_id, "valid": bool(card_valid), "type": card_type})
@@ -266,9 +266,9 @@ def get_cards():
 @app.route("/items/list/")
 def get_items():
     items = []
-    cursor.execute("SELECT id,name,description,is_chest,rarity,image \
+    g.cursor.execute("SELECT id,name,description,is_chest,rarity,image \
                     FROM item")
-    results = cursor.fetchall()
+    results = g.cursor.fetchall()
     for result in results:
         item_id, item_name, item_description, item_is_chest, item_rarity, item_image = result
         items.append({"id": item_id, "name": item_name, "description": item_description, \
@@ -278,9 +278,9 @@ def get_items():
 @app.route("/teams/list/")
 def get_teams():
     teams = []
-    cursor.execute("SELECT id,name,colour \
+    g.cursor.execute("SELECT id,name,colour \
                     FROM team")
-    results = cursor.fetchall()
+    results = g.cursor.fetchall()
     for result in results:
         team_id, team_name, team_colour = result
         teams.append({"id": team_id, "name": team_name, "colour": team_colour})
