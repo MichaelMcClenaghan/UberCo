@@ -4,10 +4,8 @@ db = sqlite3.connect('database.db')
 cursor = db.cursor()
 
 cards = []
-cursor.execute("SELECT id,valid,type \
-                FROM card")
-results = cursor.fetchall()
-for result in results:
-    card_id, card_valid, card_type = result
-    cursor.execute("INSERT INTO card VALUES (" + str(card_id + 1000) + "," + str(card_type) + "," + "1" + ")")
+cursor.execute('SELECT id, type FROM card')
+for result in cursor:
+    card_id, card_type = result
+    cursor.execute('INSERT INTO card VALUES (?, ?, 1)', (card_id + 1000, card_type))
     db.commit()
