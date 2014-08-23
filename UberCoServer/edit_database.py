@@ -1,3 +1,4 @@
+"""A command line interface for adding new cards, items, rewards and teams to the database."""
 import os
 import sqlite3
 

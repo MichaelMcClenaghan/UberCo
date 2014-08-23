@@ -1,3 +1,4 @@
+"""Creates the SQLite database and populates it with data. If the database already exists, it will be deleted first."""
 import os
 import sqlite3
 import unicodecsv as csv
