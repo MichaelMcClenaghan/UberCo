@@ -1,6 +1,6 @@
-import MySQLdb
+import sqlite3
 
-db = MySQLdb.connect(host="localhost", port=3306, user="uberco", passwd="gideon", db="UberCo")
+db = sqlite3.connect('database.db')
 cursor = db.cursor()
 
 cards = []

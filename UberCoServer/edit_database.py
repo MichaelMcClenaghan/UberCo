@@ -1,7 +1,7 @@
-import MySQLdb
 import os
+import sqlite3
 
-db = MySQLdb.connect(host="localhost", port=3306, user="uberco", passwd="gideon", db="UberCo")
+db = sqlite3.connect('database.db')
 cursor = db.cursor()
 
 
@@ -17,6 +17,7 @@ def add_cards():
         except:
             print "Error adding card: ", card_id
             db.rollback()
+
 
 def add_items():
     while True:

@@ -1,10 +1,12 @@
-import MySQLdb
+import os
+import sqlite3
 
-db = MySQLdb.connect(host="localhost", port=3306, user="uberco", passwd="gideon", db="UberCo")
+# Delete the database if it currently exists
+if os.path.exists('database.db'):
+    os.remove('database.db')
+
+db = sqlite3.connect('database.db')
 cursor = db.cursor()
-
-# Drop all tables if they exist
-cursor.execute("DROP TABLE IF EXISTS card, item, reward, team, team_items, team_rewards, chest_keys")
 
 cursor.execute("CREATE TABLE card (id int NOT NULL UNIQUE, type int, valid int);")
 cursor.execute("CREATE TABLE item (id int NOT NULL UNIQUE, name varchar(255), description varchar(255), is_chest int, rarity int, image varchar(255));")

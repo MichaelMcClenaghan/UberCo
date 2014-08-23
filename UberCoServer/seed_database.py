@@ -1,10 +1,10 @@
-import MySQLdb
+import sqlite3
 
-db = MySQLdb.connect(host="localhost", port=3306, user="uberco", passwd="gideon", db="UberCo")
+db = sqlite3.connect('database.db')
 cursor = db.cursor()
 
 # Add data from card.csv
-card_data = open("cards.csv", "r")
+card_data = open("data/cards.csv", "r")
 data = card_data.read()
 
 for card in data.split("\n"):
@@ -16,7 +16,7 @@ for card in data.split("\n"):
         print "Error adding card: ", card_id
         db.rollback()
 
-item_data = open("items.csv", "r")
+item_data = open("data/items.csv", "r")
 data = item_data.read()
 
 for item in data.split("\n"):
@@ -34,7 +34,7 @@ for item in data.split("\n"):
         db.rollback()
 
 
-team_data = open("teams.csv", "r")
+team_data = open("data/teams.csv", "r")
 data = team_data.read()
 
 for item in data.split("\n"):
@@ -51,7 +51,7 @@ for item in data.split("\n"):
         print "Error adding team: ", team_name
         db.rollback()
 
-relationships = open("chest_keys.csv", "r")
+relationships = open("data/chest_keys.csv", "r")
 data = relationships.read()
 
 for item in data.split("\n"):
@@ -68,7 +68,7 @@ for item in data.split("\n"):
         print "Error adding relationship: ", chest_id
         db.rollback()
 
-rewards = open("rewards.csv", "r")
+rewards = open("data/rewards.csv", "r")
 data = rewards.read()
 
 for item in data.split("\n"):

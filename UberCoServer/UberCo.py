@@ -1,13 +1,13 @@
 from flask import Flask
 from flask import make_response, request
-import MySQLdb
 import json
 import random
+import sqlite3
 
 app = Flask(__name__)
 app.debug = True
 
-db = MySQLdb.connect(host="localhost", port=3306, user="uberco", passwd="gideon", db="UberCo")
+db = sqlite3.connect('database.db')
 cursor = db.cursor()
 
 @app.errorhandler(404)
