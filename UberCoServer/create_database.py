@@ -1,4 +1,5 @@
-"""Creates the SQLite database and populates it with data. If the database already exists, it will be deleted first."""
+"""Creates the SQLite database and populates it with data. If the database
+already exists, it will be deleted first."""
 import os
 import sqlite3
 import unicodecsv as csv
@@ -50,7 +51,9 @@ with open('data/chest_keys.csv') as relationships:
         try:
             cursor.execute('INSERT INTO chest_keys VALUES(?, ?)', relationship)
         except DatabaseError, e:
-            print 'Error adding relationship %s/%s (%s): ' % (relationship[0], relationship[1], e)
+            print 'Error adding relationship %s/%s (%s): ' % (relationship[0],
+                                                              relationship[1],
+                                                              e)
 
 print 'Loading rewards...'
 with open('data/rewards.csv') as rewards:

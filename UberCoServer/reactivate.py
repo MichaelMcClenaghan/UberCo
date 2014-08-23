@@ -1,4 +1,5 @@
-"""Reactivates cards from the command line. Cards can either be scanned (easiest) or have their IDs entered manually."""
+"""Reactivates cards from the command line. Cards can either be scanned
+(easiest) or have their IDs entered manually."""
 import sqlite3
 
 db = sqlite3.connect('database.db')

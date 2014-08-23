@@ -1,4 +1,5 @@
-"""A command line interface for adding new cards, items, rewards and teams to the database."""
+"""A command line interface for adding new cards, items, rewards and teams to
+the database."""
 import os
 import sqlite3
 
@@ -13,7 +14,8 @@ def add_cards():
             return 0
         card_type = raw_input("What type is this card? ")
         try:
-            cursor.execute("INSERT INTO card VALUES (" + card_id + "," + card_type + ",1);")
+            cursor.execute("INSERT INTO card VALUES (?, ?, 1)", (card_id,
+                                                                 card_type))
             db.commit()
         except:
             print "Error adding card: ", card_id
@@ -37,12 +39,14 @@ def add_items():
         item_rarity = raw_input("Enter item rarity: (0-9) ")
 
         try:
-            cursor.execute("INSERT INTO item VALUES (" + item_id + ",'" + item_name + "','" + \
-                item_description + "'," + item_is_key + "," + item_rarity + ");")
+            cursor.execute("INSERT INTO item VALUES (" + item_id + ",'" +
+                           item_name + "','" + item_description + "'," +
+                           item_is_key + "," + item_rarity + ");")
             db.commit()
         except:
             print "Error adding item: ", item_name
             db.rollback()
+
 
 def add_rewards():
     while True:
@@ -53,11 +57,14 @@ def add_rewards():
         reward_rarity = raw_input("Reward rarity? ")
 
         try:
-            cursor.execute("INSERT INTO reward (name,description,rarity) VALUES ('" + reward_name + "','" + reward_description + "'," + reward_rarity + ");")
+            cursor.execute("INSERT INTO reward (name,description,rarity) "
+                           "VALUES ('" + reward_name + "','" +
+                           reward_description + "'," + reward_rarity + ");")
             db.commit()
         except:
             print "Error adding reward: ", reward_name
             db.rollback()
+
 
 def add_teams():
     while True:
@@ -67,11 +74,13 @@ def add_teams():
         team_colour = raw_input("Hex colour for team? (in format 123456) ")
 
         try:
-            cursor.execute("INSERT INTO team (name,colour) VALUES ('" + team_name + "','" + team_colour + "');")
+            cursor.execute("INSERT INTO team (name,colour) VALUES ('" +
+                           team_name + "','" + team_colour + "');")
             db.commit()
         except:
             print "Error adding team: ", team_name
             db.rollback()
+
 
 def main():
     should_continue = True

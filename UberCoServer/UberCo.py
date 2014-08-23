@@ -1,4 +1,3 @@
-import json
 import os
 import random
 import sqlite3
@@ -6,7 +5,6 @@ import sqlite3
 import flask
 from flask import Flask
 from flask import g
-from flask import make_response
 from flask import request
 from flask_cors import CORS
 
@@ -28,7 +26,7 @@ def check_database():
         return
 
     if not os.path.exists('database.db'):
-        return make_response(json.dumps({'error': 'Database not ready'}), 500)
+        return jsonify({'error': 'Database not ready'}, 500)
 
     g.db = sqlite3.connect('database.db')
     g.cursor = g.db.cursor()
@@ -49,7 +47,8 @@ def not_found(error):
 def redeem_card(team_id, card_id):
     """Adds a card to a team's inventory and marks the card as used.
     Occurs when a team member scans a card."""
-    g.cursor.execute('SELECT id, valid, type FROM card WHERE id = ?', (card_id,))
+    g.cursor.execute('SELECT id, valid, type FROM card WHERE id = ?',
+                     (card_id,))
     row = g.cursor.fetchone()
     if row is None:
         return jsonify({'error': 'Card not found'}, 400)
@@ -61,26 +60,34 @@ def redeem_card(team_id, card_id):
         return jsonify({'error': 'Card has already been redeemed'}, 400)
 
     g.cursor.execute('UPDATE card SET valid = 0 WHERE id = ?', (card_id,))
-    g.cursor.execute('INSERT INTO team_items VALUES (?, ?)', (team_id, card_type))
+    g.cursor.execute('INSERT INTO team_items VALUES (?, ?)', (team_id,
+                                                              card_type))
     g.db.commit()
 
-    g.cursor.execute('SELECT id, name, description, is_chest, rarity, image FROM item WHERE id = ?', (card_type,))
+    g.cursor.execute('SELECT id, name, description, is_chest, rarity, image '
+                     'FROM item WHERE id = ?', (card_type,))
     row = g.cursor.fetchone()
     if row is None:
-        return jsonify({'error': 'Failed to find the item that belongs to this card'}, 400)
+        return jsonify({'error': 'Failed to find the item that belongs to '
+                                 'this card.'}, 400)
 
-    item_id, item_name, item_description, item_is_chest, item_rarity, item_image = row
-    return jsonify({'id': item_id, 'name': item_name, 'description': item_description, 'is_chest': bool(item_is_chest),
+    item_id, item_name, item_description, item_is_chest, item_rarity, \
+        item_image = row
+    return jsonify({'id': item_id, 'name': item_name,
+                    'description': item_description,
+                    'is_chest': bool(item_is_chest),
                     'rarity': item_rarity, 'image': item_image})
 
 
 @app.route('/<team_id>/chests/redeem/<chest_id>/')
 def redeem_chest(team_id, chest_id):
-    """Verifies that a team has all the keys for a particular chest and selects a random reward for the team.
-    This process removes the keys and chest from the team's inventory."""
+    """Verifies that a team has all the keys for a particular chest and selects
+    a random reward for the team. This process removes the keys and chest from
+    the team's inventory."""
     rewards = []
 
-    g.cursor.execute('SELECT item_id, rarity, is_chest FROM team_items JOIN item ON item.id = team_items.item_id '
+    g.cursor.execute('SELECT item_id, rarity, is_chest FROM team_items '
+                     'JOIN item ON item.id = team_items.item_id '
                      'WHERE team_id = ? AND item_id = ?', (team_id, chest_id))
     row = g.cursor.fetchone()
     if row is None:
@@ -100,28 +107,38 @@ def redeem_chest(team_id, chest_id):
         try:
             items.remove(item)
         except ValueError:
-            return jsonify({'error': 'Your team does not have the required keys!'}, 400)
+            return jsonify({'error': 'Your team does not have the '
+                                     'required keys!'}, 400)
 
     # Remove required keys and the chest from the team inventory
     chest_keys.append(chest_id)
     for item in chest_keys:
-        g.cursor.execute('DELETE FROM team_items WHERE team_id = ? AND item_id = ?', (team_id, item))
+        g.cursor.execute('DELETE FROM team_items '
+                         'WHERE team_id = ? AND item_id = ?', (team_id, item))
     g.db.commit()
 
-    g.cursor.execute('SELECT id, name, description, rarity, numberRemaining FROM reward WHERE numberRemaining != 0')
+    g.cursor.execute('SELECT id, name, description, rarity, numberRemaining '
+                     'FROM reward WHERE numberRemaining != 0')
     results = g.cursor.fetchall()
     if len(results) == 0:
         return jsonify({'error': 'There are no rewards left!'}, 400)
 
     for result in results:
-        reward_id, reward_name, reward_description, reward_rarity, rewards_remaining = result
-        rewards.append({'id': reward_id, 'name': reward_name, 'description': reward_description,
-                        'rarity': reward_rarity, 'remaining': rewards_remaining, 'image': 'reward.png'})
+        reward_id, reward_name, reward_description, reward_rarity, \
+            rewards_remaining = result
+        rewards.append({'id': reward_id, 'name': reward_name,
+                        'description': reward_description,
+                        'rarity': reward_rarity,
+                        'remaining': rewards_remaining, 'image': 'reward.png'})
+
+    print rewards
 
     reward = select_reward(rewards, item_rarity)
 
-    g.cursor.execute('UPDATE reward SET numberRemaining = numberRemaining - 1 WHERE id = ?', (reward['id'],))
-    g.cursor.execute('INSERT INTO team_rewards VALUES (?, ?, 0)', (team_id, reward['id']))
+    g.cursor.execute('UPDATE reward SET numberRemaining = numberRemaining - 1 '
+                     'WHERE id = ?', (reward['id'],))
+    g.cursor.execute('INSERT INTO team_rewards VALUES (?, ?, 0)',
+                     (team_id, reward['id']))
 
     return jsonify(reward)
 
@@ -134,56 +151,51 @@ def select_reward(rewards, reward_level):
         return rewards[random.randint(0, num_rewards - 1)]
 
 
-@app.route("/<team_id>/rewards/redeem/<reward_id>/")
+@app.route('/<team_id>/rewards/redeem/<reward_id>/')
 def redeem_reward(team_id, reward_id):
-    try:
-        g.cursor.execute("DELETE FROM team_rewards \
-                    WHERE team_id = " + team_id + \
-                       " AND reward_id = " + str(reward_id) + \
-                       " LIMIT 1")
-    except:
-        return make_response(json.dumps({'error': 'Failed to remove reward from team'}), 400)
+    g.cursor.execute('DELETE FROM team_rewards WHERE team_id = ? '
+                     'AND reward_id = ? LIMIT 1', (team_id, reward_id))
 
 
-@app.route("/<team_id>/items/")
+@app.route('/<team_id>/items/')
 def get_team_items(team_id):
     items = []
-    g.cursor.execute("SELECT item_id,name,description,is_chest,rarity,image \
-                    FROM team_items \
-                    INNER JOIN item \
-                    ON item.id = team_items.item_id \
-                    WHERE team_id=" + team_id)
+    g.cursor.execute('SELECT item_id, name, description, is_chest, rarity,'
+                     'image FROM team_items '
+                     'JOIN item ON item.id = team_items.item_id '
+                     'WHERE team_id=?', (team_id,))
     results = g.cursor.fetchall()
     for result in results:
-        item_id, item_name, item_description, item_is_chest, item_rarity, item_image = result
-        items.append({"id": item_id, "name": item_name, "description": item_description, \
-                      "is_chest": item_is_chest, "rarity": item_rarity, "image": item_image})
-    return json.dumps(items)
+        item_id, item_name, item_description, item_is_chest, item_rarity, \
+            item_image = result
+        items.append({'id': item_id, 'name': item_name,
+                      'description': item_description,
+                      'is_chest': item_is_chest, 'rarity': item_rarity,
+                      'image': item_image})
+    return jsonify(items)
 
 
-@app.route("/<team_id>/rewards/")
+@app.route('/<team_id>/rewards/')
 def get_team_rewards(team_id):
     rewards = []
-    g.cursor.execute("SELECT reward_id,name,description,rarity \
-                    FROM team_rewards \
-                    INNER JOIN reward \
-                    ON reward.id = team_rewards.reward_id \
-                    WHERE team_id=" + team_id)
+    g.cursor.execute('SELECT reward_id, name, description, rarity '
+                     'FROM team_rewards '
+                     'JOIN reward ON reward.id = team_rewards.reward_id '
+                     'WHERE team_id = ?', (team_id,))
     results = g.cursor.fetchall()
 
     for result in results:
         reward_id, reward_name, reward_description, reward_rarity = result
-        rewards.append({"id": reward_id, "name": reward_name, "description": reward_description, \
-                        "rarity": reward_rarity, "image": "reward.png"})
-
-    return json.dumps(rewards)
+        rewards.append({'id': reward_id, 'name': reward_name,
+                        'description': reward_description,
+                        'rarity': reward_rarity, 'image': 'reward.png'})
+    return jsonify(rewards)
 
 
 def get_team_item_ids(team_id):
     items = []
-    g.cursor.execute("SELECT item_id \
-                    FROM team_items \
-                    WHERE team_id=" + team_id)
+    g.cursor.execute('SELECT item_id FROM team_items WHERE team_id = ?',
+                     (team_id,))
     results = g.cursor.fetchall()
     for result in results:
         item_id = result[0]
@@ -195,80 +207,80 @@ def get_chest_keys(chest_id):
     relationships = []
     used_chests = []
 
-    g.cursor.execute("SELECT chest_id,key_id \
-                    FROM chest_keys \
-                    WHERE chest_id = " + chest_id)
+    g.cursor.execute('SELECT chest_id, key_id FROM chest_keys '
+                     'WHERE chest_id = ?', (chest_id,))
     results = g.cursor.fetchall()
 
     for result in results:
         chest_id, key_id = result
         if used_chests.__contains__(chest_id):
             for relationship in relationships:
-                if relationship["chest"] == chest_id:
-                    relationship["keys"].append(key_id)
+                if relationship['chest'] == chest_id:
+                    relationship['keys'].append(key_id)
         else:
-            relationships.append({"chest": chest_id, "keys": [key_id]})
+            relationships.append({'chest': chest_id, 'keys': [key_id]})
         used_chests.append(chest_id)
     return relationships[0]
 
 
-@app.route("/chests/")
+@app.route('/chests/')
 def get_all_chest_keys():
     relationships = []
     used_chests = []
 
-    g.cursor.execute("SELECT chest_id,key_id \
-        FROM chest_keys")
+    g.cursor.execute('SELECT chest_id, key_id FROM chest_keys')
     results = g.cursor.fetchall()
 
     for result in results:
         chest_id, key_id = result
         if used_chests.__contains__(chest_id):
             for relationship in relationships:
-                if relationship["chest"] == chest_id:
-                    relationship["keys"].append(key_id)
+                if relationship['chest'] == chest_id:
+                    relationship['keys'].append(key_id)
         else:
-            relationships.append({"chest": chest_id, "keys": [key_id]})
+            relationships.append({'chest': chest_id, 'keys': [key_id]})
         used_chests.append(chest_id)
-    return json.dumps(relationships)
+    return jsonify(relationships)
 
 
-@app.route("/cards/list/")
+@app.route('/cards/list/')
 def get_cards():
     cards = []
-    g.cursor.execute("SELECT id,valid,type \
-                    FROM card")
+    g.cursor.execute('SELECT id, valid, type FROM card')
     results = g.cursor.fetchall()
     for result in results:
         card_id, card_valid, card_type = result
-        cards.append({"id": card_id, "valid": bool(card_valid), "type": card_type})
-    return json.dumps(cards)
+        cards.append({'id': card_id, 'valid': bool(card_valid),
+                      'type': card_type})
+    return jsonify(cards)
 
 
-@app.route("/items/list/")
+@app.route('/items/list/')
 def get_items():
     items = []
-    g.cursor.execute("SELECT id,name,description,is_chest,rarity,image \
-                    FROM item")
+    g.cursor.execute('SELECT id, name, description, is_chest, rarity, image '
+                     'FROM item')
     results = g.cursor.fetchall()
     for result in results:
-        item_id, item_name, item_description, item_is_chest, item_rarity, item_image = result
-        items.append({"id": item_id, "name": item_name, "description": item_description, \
-                      "is_chest": item_is_chest, "rarity": item_rarity, "image": item_image})
-    return json.dumps(items)
+        item_id, item_name, item_description, item_is_chest, item_rarity, \
+            item_image = result
+        items.append({'id': item_id, 'name': item_name,
+                      'description': item_description,
+                      'is_chest': item_is_chest, 'rarity': item_rarity,
+                      'image': item_image})
+    return jsonify(items)
 
 
-@app.route("/teams/list/")
+@app.route('/teams/list/')
 def get_teams():
     teams = []
-    g.cursor.execute("SELECT id,name,colour \
-                    FROM team")
+    g.cursor.execute('SELECT id, name, colour FROM team')
     results = g.cursor.fetchall()
     for result in results:
         team_id, team_name, team_colour = result
-        teams.append({"id": team_id, "name": team_name, "colour": team_colour})
-    return json.dumps(teams)
+        teams.append({'id': team_id, 'name': team_name, 'colour': team_colour})
+    return jsonify(teams)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(port=5051, host='0.0.0.0')
