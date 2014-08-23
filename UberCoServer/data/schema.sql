@@ -34,7 +34,8 @@ CREATE TABLE team_items (
 
 CREATE TABLE team_rewards (
   team_id   INTEGER,
-  reward_id INTEGER
+  reward_id INTEGER,
+  claimed   INTEGER
 );
 
 CREATE TABLE chest_keys (
