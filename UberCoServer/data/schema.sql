@@ -1,7 +1,7 @@
 CREATE TABLE cards (
-  id    INTEGER NOT NULL PRIMARY KEY,
-  type  INTEGER,
-  valid INTEGER
+  id       INTEGER NOT NULL PRIMARY KEY,
+  type     INTEGER,
+  redeemed INTEGER
 );
 
 CREATE TABLE items (

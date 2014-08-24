@@ -10,7 +10,6 @@ from flask import request
 from flask_cors import CORS
 
 app = Flask(__name__)
-app.debug = True
 cors = CORS(app, headers=['Content-Type', 'X-Requested-With'])
 
 
@@ -50,18 +49,19 @@ def not_found(error):
 def redeem_card(team_id, card_id):
     """Adds a card to a team's inventory and marks the card as used.
     Occurs when a team member scans a card."""
-    g.cur.execute('SELECT id, valid, type FROM cards WHERE id = ?', (card_id,))
+    g.cur.execute('SELECT id, redeemed, type FROM cards WHERE id = ?',
+                  (card_id,))
     row = g.cur.fetchone()
     if row is None:
         return jsonify({'error': 'Card not found'}, 400)
 
-    card_id, card_valid, card_type = row
+    card_id, card_redeemed, card_type = row
     print 'Scanned card:', card_id
 
-    if card_valid == 0:
+    if card_redeemed:
         return jsonify({'error': 'Card has already been redeemed'}, 400)
 
-    g.cur.execute('UPDATE cards SET valid = 0 WHERE id = ?', (card_id,))
+    g.cur.execute('UPDATE cards SET redeemed = 1 WHERE id = ?', (card_id,))
     g.cur.execute('INSERT INTO team_items VALUES (?, ?)', (team_id, card_type))
     g.db.commit()
 
@@ -140,6 +140,7 @@ def redeem_chest(team_id, chest_id):
                       'WHERE id = ?', (reward['id'],))
     g.cur.execute('INSERT INTO team_rewards VALUES (?, ?)', (team_id,
                                                              reward['id']))
+    g.commit()
 
     return jsonify(reward)
 
@@ -248,11 +249,11 @@ def get_all_chest_keys():
 @app.route('/cards/list')
 def get_cards():
     cards = []
-    g.cur.execute('SELECT id, valid, type FROM cards')
+    g.cur.execute('SELECT id, redeemed, type FROM cards')
     results = g.cur.fetchall()
     for result in results:
-        card_id, card_valid, card_type = result
-        cards.append({'id': card_id, 'valid': bool(card_valid),
+        card_id, card_redeemed, card_type = result
+        cards.append({'id': card_id, 'redeemed': bool(card_redeemed),
                       'type': card_type})
     return jsonify(cards)
 
@@ -283,6 +284,13 @@ def get_teams():
         teams.append({'id': team_id, 'name': team_name, 'colour': team_colour})
     return jsonify(teams)
 
+
+@app.route('/admin/reactivate/<card_id>')
+def reactivate_card(card_id):
+    g.cur.execute('UPDATE cards SET redeemed = 0 WHERE id = ?', (card_id,))
+    if g.cur.rowcount != 1:
+        return jsonify({'error': 'Card with ID %s not found' % card_id})
+    return jsonify({'success': True})
 
 if __name__ == '__main__':
     app.run(port=5051, host='0.0.0.0')

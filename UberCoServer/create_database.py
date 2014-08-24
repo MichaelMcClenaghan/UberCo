@@ -22,7 +22,7 @@ with open('data/cards.csv') as cards:
     reader = csv.reader(cards)
     for card in reader:
         try:
-            cur.execute('INSERT INTO cards VALUES (?, ?, 1)', card)
+            cur.execute('INSERT INTO cards VALUES (?, ?, 0)', card)
         except DatabaseError, e:
             print 'Error adding card %s (%s)' % (card[0], e)
 

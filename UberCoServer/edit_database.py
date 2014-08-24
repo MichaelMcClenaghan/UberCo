@@ -16,7 +16,7 @@ def add_cards():
 
         item_type = raw_input('Please enter item type id: ')
         try:
-            cur.execute('INSERT INTO cards VALUES (?, ?, 1)', (card_id,
+            cur.execute('INSERT INTO cards VALUES (?, ?, 0)', (card_id,
                                                                item_type))
             db.commit()
         except DatabaseError, e:
