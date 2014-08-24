@@ -36,7 +36,9 @@ def check_database():
 
 @app.after_request
 def request_cleanup(response):
+    """Commit any changes and close the database after every request."""
     if hasattr(g, 'db'):
+        g.db.commit()
         g.db.close()
     return response
 
@@ -64,7 +66,6 @@ def redeem_card(team_id, card_id):
 
     g.cur.execute('UPDATE cards SET redeemed = 1 WHERE id = ?', (card_id,))
     g.cur.execute('INSERT INTO team_items VALUES (?, ?)', (team_id, card_type))
-    g.db.commit()
 
     print 'team_items internal ID:', g.cur.lastrowid
 
@@ -119,6 +120,8 @@ def redeem_chest(team_id, chest_id):
             team_items[item[1]] = []
         team_items[item[1]].append(item[0])
 
+    # Attempt to "take" each required key from the team inventory. If we
+    # encounter an error, that means that team doesn't have enough keys.
     items_consumed = [internal_id]
     for key in keys_required:
         try:
@@ -127,21 +130,12 @@ def redeem_chest(team_id, chest_id):
             return jsonify({'error': 'Your team does not have the '
                                      'required keys!'}, 400)
 
-    print '%d items consumed' % len(items_consumed)
-
-    # Remove required keys and the chest from the team inventory
-    for item in items_consumed:
-        g.cur.execute('DELETE FROM team_items WHERE ROWID = ?', (item,))
-    g.db.commit()
-
     # Grab a list of available rewards
     g.cur.execute('SELECT id, name, description, rarity, numberRemaining '
-                  'FROM rewards WHERE numberRemaining != 0')
-    results = g.cur.fetchall()
-    if len(results) == 0:
-        return jsonify({'error': 'There are no rewards left!'}, 400)
-
-    for result in results:
+                  'FROM rewards '
+                  'WHERE numberRemaining != 0 AND rarity <= ?', (item_rarity,))
+    rewards = []
+    for result in g.cur:
         reward_id, reward_name, reward_description, reward_rarity, \
             rewards_remaining = result
         rewards.append({'id': reward_id, 'name': reward_name,
@@ -149,17 +143,25 @@ def redeem_chest(team_id, chest_id):
                         'rarity': reward_rarity,
                         'remaining': rewards_remaining, 'image': 'reward.png'})
 
-    reward = select_reward(rewards, item_rarity)
-
+    # Select a reward to give
+    if len(rewards) == 0:
+        return jsonify({'error': 'There are no rewards left! (Your items have '
+                                 'not been used.)'}, 400)
+    reward = random.choice(rewards)
     print "Reward %s given (rarity %d)" % (reward['id'], reward['rarity'])
 
+    # Reduce the number of that reward remaining (if not unlimited)
     if reward['remaining'] > 0:
         g.cur.execute('UPDATE rewards SET numberRemaining = '
                       'numberRemaining - 1 '
                       'WHERE id = ?', (reward['id'],))
     g.cur.execute('INSERT INTO team_rewards VALUES (?, ?)', (team_id,
                                                              reward['id']))
-    g.db.commit()
+
+    # Remove required keys and the chest from the team inventory
+    for item in items_consumed:
+        g.cur.execute('DELETE FROM team_items WHERE ROWID = ?', (item,))
+    print '%d items consumed' % len(items_consumed)
 
     return jsonify(reward)
 
@@ -270,7 +272,7 @@ def get_teams():
     return jsonify(teams)
 
 
-@app.route('/admin/reactivate/<card_id>')
+@app.route('/cards/reactivate/<card_id>')
 def reactivate_card(card_id):
     g.cur.execute('UPDATE cards SET redeemed = 0 WHERE id = ?', (card_id,))
     if g.cur.rowcount != 1:
