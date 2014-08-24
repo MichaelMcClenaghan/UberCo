@@ -206,22 +206,17 @@ def get_team_rewards(team_id):
 
 @app.route('/chests')
 def get_all_chest_keys():
-    relationships = []
-    used_chests = []
-
     g.cur.execute('SELECT chest_id, key_id FROM chest_keys')
-    results = g.cur.fetchall()
-
-    for result in results:
+    relationships = {}
+    for result in g.cur:
         chest_id, key_id = result
-        if chest_id in used_chests:
-            for relationship in relationships:
-                if relationship['chest'] == chest_id:
-                    relationship['keys'].append(key_id)
-        else:
-            relationships.append({'chest': chest_id, 'keys': [key_id]})
-        used_chests.append(chest_id)
-    return jsonify(relationships)
+        if chest_id not in relationships:
+            relationships[chest_id] = []
+        relationships[chest_id].append(key_id)
+
+    # We need the output to be in a specific format for the frontend.
+    output = [{'chest': c, 'keys': k} for c, k in relationships.iteritems()]
+    return jsonify(output)
 
 
 @app.route('/cards/list')
