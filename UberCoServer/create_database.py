@@ -23,7 +23,8 @@ with open('data/cards.csv') as cards:
     for card in reader:
         try:
             cur.execute('INSERT INTO cards VALUES (?, ?, 0)', card)
-        except DatabaseError, e:
+            cur.execute('INSERT INTO team_items VALUES (1, ?)', (card[1],))
+        except DatabaseError as e:
             print 'Error adding card %s (%s)' % (card[0], e)
 
 print 'Loading items...'
@@ -32,7 +33,7 @@ with open('data/items.csv') as items:
     for item in reader:
         try:
             cur.execute('INSERT INTO items VALUES (?, ?, ?, ?, ?, ?)', item)
-        except DatabaseError, e:
+        except DatabaseError as e:
             print 'Error adding item %s (%s)' % (item[1], e)
 
 print 'Loading teams...'
@@ -41,7 +42,7 @@ with open('data/teams.csv') as teams:
     for team in reader:
         try:
             cur.execute('INSERT INTO teams VALUES (?, ?, ?)', team)
-        except DatabaseError, e:
+        except DatabaseError as e:
             print 'Error adding team %s (%s)' % (team[1], e)
 
 print 'Loading chest/key relationships...'
@@ -50,7 +51,7 @@ with open('data/chest_keys.csv') as relationships:
     for relationship in reader:
         try:
             cur.execute('INSERT INTO chest_keys VALUES(?, ?)', relationship)
-        except DatabaseError, e:
+        except DatabaseError as e:
             print 'Error adding relationship %s/%s (%s): ' % (relationship[0],
                                                               relationship[1],
                                                               e)
@@ -61,7 +62,7 @@ with open('data/rewards.csv') as rewards:
     for reward in reader:
         try:
             cur.execute('INSERT INTO rewards VALUES (?, ?, ?, ?, ?)', reward)
-        except DatabaseError, e:
+        except DatabaseError as e:
             print 'Error adding reward %s (%s)' % (reward[1], e)
 
 db.commit()

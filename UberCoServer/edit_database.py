@@ -19,7 +19,7 @@ def add_cards():
             cur.execute('INSERT INTO cards VALUES (?, ?, 0)', (card_id,
                                                                item_type))
             db.commit()
-        except DatabaseError, e:
+        except DatabaseError as e:
             print 'Error adding card:', e
 
 
@@ -41,7 +41,7 @@ def add_items():
                         (item_id, item_name, item_description, item_is_key,
                          item_rarity, item_image))
             db.commit()
-        except DatabaseError, e:
+        except DatabaseError as e:
             print 'Error adding item:', e
 
 
