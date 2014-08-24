@@ -5,7 +5,7 @@ import sqlite3
 from sqlite3 import DatabaseError
 
 db = sqlite3.connect('database.db')
-cursor = db.cursor()
+cur = db.cursor()
 
 
 def add_cards():
@@ -16,8 +16,8 @@ def add_cards():
 
         item_type = raw_input('Please enter item type id: ')
         try:
-            cursor.execute('INSERT INTO cards VALUES (?, ?, 1)', (card_id,
-                                                                  item_type))
+            cur.execute('INSERT INTO cards VALUES (?, ?, 1)', (card_id,
+                                                               item_type))
             db.commit()
         except DatabaseError, e:
             print 'Error adding card:', e
@@ -34,11 +34,12 @@ def add_items():
         item_is_key = raw_input('Is the item a key? (y/N) ')
         item_is_key = 1 if item_is_key in ['Y', 'y'] else 0
         item_rarity = raw_input('Enter item rarity: (0-9) ')
+        item_image = raw_input('Enter image filename: ')
 
         try:
-            cursor.execute('INSERT INTO items VALUES (?, ?, ?, ?, ?)',
-                           (item_id, item_name, item_description, item_is_key,
-                            item_rarity))
+            cur.execute('INSERT INTO items VALUES (?, ?, ?, ?, ?, ?)',
+                        (item_id, item_name, item_description, item_is_key,
+                         item_rarity, item_image))
             db.commit()
         except DatabaseError, e:
             print 'Error adding item:', e
@@ -53,9 +54,9 @@ def add_rewards():
         reward_description = raw_input('Reward description? ')
         reward_rarity = raw_input('Reward rarity? ')
 
-        cursor.execute('INSERT INTO rewards (name, description, rarity) '
-                       'VALUES (?, ?, ?)',
-                       (reward_name, reward_description, reward_rarity))
+        cur.execute('INSERT INTO rewards (name, description, rarity) '
+                    'VALUES (?, ?, ?)',
+                    (reward_name, reward_description, reward_rarity))
         db.commit()
 
 
@@ -66,8 +67,8 @@ def add_teams():
             return
         team_colour = raw_input('Hex colour for team? (in format 123456) ')
 
-        cursor.execute('INSERT INTO teams (name, colour) VALUES (?, ?)',
-                       (team_name, team_colour))
+        cur.execute('INSERT INTO teams (name, colour) VALUES (?, ?)',
+                    (team_name, team_colour))
         db.commit()
 
 

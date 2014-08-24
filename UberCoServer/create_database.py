@@ -11,7 +11,7 @@ if os.path.exists('database.db'):
     os.remove('database.db')
 
 db = sqlite3.connect('database.db')
-cursor = db.cursor()
+cur = db.cursor()
 
 print 'Creating database tables...'
 sql = open('data/schema.sql', 'r').read()
@@ -22,7 +22,7 @@ with open('data/cards.csv') as cards:
     reader = csv.reader(cards)
     for card in reader:
         try:
-            cursor.execute('INSERT INTO cards VALUES (?, ?, 1)', card)
+            cur.execute('INSERT INTO cards VALUES (?, ?, 1)', card)
         except DatabaseError, e:
             print 'Error adding card %s (%s)' % (card[0], e)
 
@@ -31,7 +31,7 @@ with open('data/items.csv') as items:
     reader = csv.reader(items, delimiter='|')
     for item in reader:
         try:
-            cursor.execute('INSERT INTO items VALUES (?, ?, ?, ?, ?, ?)', item)
+            cur.execute('INSERT INTO items VALUES (?, ?, ?, ?, ?, ?)', item)
         except DatabaseError, e:
             print 'Error adding item %s (%s)' % (item[1], e)
 
@@ -40,7 +40,7 @@ with open('data/teams.csv') as teams:
     reader = csv.reader(teams)
     for team in reader:
         try:
-            cursor.execute('INSERT INTO teams VALUES (?, ?, ?)', team)
+            cur.execute('INSERT INTO teams VALUES (?, ?, ?)', team)
         except DatabaseError, e:
             print 'Error adding team %s (%s)' % (team[1], e)
 
@@ -49,7 +49,7 @@ with open('data/chest_keys.csv') as relationships:
     reader = csv.reader(relationships)
     for relationship in reader:
         try:
-            cursor.execute('INSERT INTO chest_keys VALUES(?, ?)', relationship)
+            cur.execute('INSERT INTO chest_keys VALUES(?, ?)', relationship)
         except DatabaseError, e:
             print 'Error adding relationship %s/%s (%s): ' % (relationship[0],
                                                               relationship[1],
@@ -60,7 +60,7 @@ with open('data/rewards.csv') as rewards:
     reader = csv.reader(rewards, delimiter='|')
     for reward in reader:
         try:
-            cursor.execute('INSERT INTO rewards VALUES (?, ?, ?, ?, ?)', reward)
+            cur.execute('INSERT INTO rewards VALUES (?, ?, ?, ?, ?)', reward)
         except DatabaseError, e:
             print 'Error adding reward %s (%s)' % (reward[1], e)
 
