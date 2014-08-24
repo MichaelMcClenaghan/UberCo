@@ -67,8 +67,6 @@ def redeem_card(team_id, card_id):
     g.cur.execute('UPDATE cards SET redeemed = 1 WHERE id = ?', (card_id,))
     g.cur.execute('INSERT INTO team_items VALUES (?, ?)', (team_id, card_type))
 
-    print 'team_items internal ID:', g.cur.lastrowid
-
     g.cur.execute('SELECT id, name, description, is_chest, rarity, image '
                   'FROM items WHERE id = ?', (card_type,))
     row = g.cur.fetchone()
@@ -89,8 +87,6 @@ def redeem_chest(team_id, chest_id):
     """Verifies that a team has all the keys for a particular chest and selects
     a random reward for the team. This process removes the keys and chest from
     the team's inventory."""
-    rewards = []
-
     g.cur.execute('SELECT team_items.ROWID, item_id, rarity, is_chest '
                   'FROM team_items '
                   'JOIN items ON items.id = team_items.item_id '
@@ -164,14 +160,6 @@ def redeem_chest(team_id, chest_id):
     print '%d items consumed' % len(items_consumed)
 
     return jsonify(reward)
-
-
-def select_reward(rewards, reward_level):
-    num_rewards = len(rewards[reward_level - 1])
-    if num_rewards == 0:
-        return False
-    else:
-        return rewards[random.randint(0, num_rewards - 1)]
 
 
 @app.route('/<team_id>/rewards/redeem/<reward_id>')
