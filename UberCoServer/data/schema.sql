@@ -1,11 +1,11 @@
 CREATE TABLE card (
-  id    INTEGER NOT NULL UNIQUE,
+  id    INTEGER NOT NULL PRIMARY KEY,
   type  INTEGER,
   valid INTEGER
 );
 
 CREATE TABLE item (
-  id          INTEGER NOT NULL UNIQUE,
+  id          INTEGER NOT NULL PRIMARY KEY,
   name        TEXT,
   description TEXT,
   is_chest    INTEGER,
@@ -14,7 +14,7 @@ CREATE TABLE item (
 );
 
 CREATE TABLE reward (
-  id              INTEGER NOT NULL UNIQUE,
+  id              INTEGER NOT NULL PRIMARY KEY,
   name            TEXT,
   description     TEXT,
   rarity          INTEGER,
@@ -22,7 +22,7 @@ CREATE TABLE reward (
 );
 
 CREATE TABLE team (
-  id     INTEGER NOT NULL UNIQUE,
+  id     INTEGER NOT NULL PRIMARY KEY,
   name   TEXT,
   colour TEXT
 );
@@ -34,8 +34,7 @@ CREATE TABLE team_items (
 
 CREATE TABLE team_rewards (
   team_id   INTEGER,
-  reward_id INTEGER,
-  claimed   INTEGER
+  reward_id INTEGER
 );
 
 CREATE TABLE chest_keys (

@@ -131,13 +131,11 @@ def redeem_chest(team_id, chest_id):
                         'rarity': reward_rarity,
                         'remaining': rewards_remaining, 'image': 'reward.png'})
 
-    print rewards
-
     reward = select_reward(rewards, item_rarity)
 
     g.cursor.execute('UPDATE reward SET numberRemaining = numberRemaining - 1 '
                      'WHERE id = ?', (reward['id'],))
-    g.cursor.execute('INSERT INTO team_rewards VALUES (?, ?, 0)',
+    g.cursor.execute('INSERT INTO team_rewards VALUES (?, ?)',
                      (team_id, reward['id']))
 
     return jsonify(reward)
@@ -153,8 +151,9 @@ def select_reward(rewards, reward_level):
 
 @app.route('/<team_id>/rewards/redeem/<reward_id>/')
 def redeem_reward(team_id, reward_id):
-    g.cursor.execute('DELETE FROM team_rewards WHERE team_id = ? '
-                     'AND reward_id = ? LIMIT 1', (team_id, reward_id))
+    g.cursor.execute('DELETE FROM team_rewards WHERE ROWID = ('
+                     'SELECT ROWID FROM team_rewards WHERE team_id = ? '
+                     'AND reward_id = ? LIMIT 1)', (team_id, reward_id))
 
 
 @app.route('/<team_id>/items/')
