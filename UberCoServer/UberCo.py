@@ -102,35 +102,39 @@ def redeem_chest(team_id, chest_id):
     if not is_chest:
         return jsonify({'error': 'Attempting to redeem key, not chest'}, 400)
 
-    print 'Unlocking chest %s with internal ID %s' % (item_id, internal_id)
+    print 'Unlocking chest %s (rarity %d)' % (item_id, item_rarity)
 
+    # Find which keys are required to open this chest
     g.cur.execute('SELECT key_id FROM chest_keys WHERE chest_id = ?',
                   (chest_id,))
     keys_required = [row[0] for row in g.cur]
 
-    g.cur.execute('SELECT item_id FROM team_items WHERE team_id = ?',
+    # Create a list of the internal IDs for each item type that the team owns.
+    # This way we can selectively specific items from the inventory later.
+    g.cur.execute('SELECT ROWID, item_id FROM team_items WHERE team_id = ?',
                   (team_id,))
-    team_items = [row[0] for row in g.cur]
+    team_items = {}
+    for item in g.cur:
+        if item[1] not in team_items:
+            team_items[item[1]] = []
+        team_items[item[1]].append(item[0])
 
-    print 'Keys required:', repr(keys_required)
-    print 'Items owned:', repr(team_items)
-
+    items_consumed = [internal_id]
     for key in keys_required:
         try:
-            team_items.remove(key)
-        except ValueError:
+            items_consumed.append(team_items[key].pop())
+        except (KeyError, IndexError):
             return jsonify({'error': 'Your team does not have the '
                                      'required keys!'}, 400)
 
-    print 'Items left: ', repr(team_items)
+    print '%d items consumed' % len(items_consumed)
 
     # Remove required keys and the chest from the team inventory
-    keys_required.append(chest_id)
-    for item in keys_required:
-        g.cur.execute('DELETE FROM team_items '
-                      'WHERE team_id = ? AND item_id = ?', (team_id, item))
+    for item in items_consumed:
+        g.cur.execute('DELETE FROM team_items WHERE ROWID = ?', (item,))
     g.db.commit()
 
+    # Grab a list of available rewards
     g.cur.execute('SELECT id, name, description, rarity, numberRemaining '
                   'FROM rewards WHERE numberRemaining != 0')
     results = g.cur.fetchall()
@@ -146,6 +150,8 @@ def redeem_chest(team_id, chest_id):
                         'remaining': rewards_remaining, 'image': 'reward.png'})
 
     reward = select_reward(rewards, item_rarity)
+
+    print "Reward %s given (rarity %d)" % (reward['id'], reward['rarity'])
 
     if reward['remaining'] > 0:
         g.cur.execute('UPDATE rewards SET numberRemaining = '
