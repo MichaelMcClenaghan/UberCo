@@ -292,19 +292,19 @@ function InventoryController($scope, $http) {
         $scope.selectedTeam = undefined;
     }
 
-    $http.get($scope.apiAddress+'/teams/list/').success(function(data) {
+    $http.get($scope.apiAddress+'/teams/list').success(function(data) {
         $scope.teams = data.sort($scope.sortById);
     }).error(function(data) {
             $scope.displayError(data);
         });
 
-    $http.get($scope.apiAddress+'/chests/').success(function(data) {
+    $http.get($scope.apiAddress+'/chests').success(function(data) {
         $scope.chest_keys = data;
     }).error(function(data) {
             $scope.displayError(data);
         });
 
-    $http.get($scope.apiAddress+'/items/list/').success(function(data) {
+    $http.get($scope.apiAddress+'/items/list').success(function(data) {
         $scope.allItems = data;
     }).error(function(data) {
             $scope.displayError(data)

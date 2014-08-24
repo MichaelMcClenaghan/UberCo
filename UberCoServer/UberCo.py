@@ -1,3 +1,4 @@
+import json
 import os
 import random
 import sqlite3
@@ -15,8 +16,9 @@ cors = CORS(app, headers=['Content-Type', 'X-Requested-With'])
 
 def jsonify(data, status_code=200):
     """A wrapper for flask.jsonify that allows you to set the response code."""
-    response = flask.jsonify(data)
+    response = flask.make_response(json.dumps(data))
     response.status_code = status_code
+    response.mimetype = 'application/json'
     return response
 
 
@@ -34,7 +36,8 @@ def check_database():
 
 @app.after_request
 def request_cleanup(response):
-    g.db.close()
+    if hasattr(g, 'db'):
+        g.db.close()
     return response
 
 
@@ -43,7 +46,7 @@ def not_found(error):
     return jsonify({'error': error.description}, 404)
 
 
-@app.route('/<team_id>/cards/redeem/<card_id>/')
+@app.route('/<team_id>/cards/redeem/<card_id>')
 def redeem_card(team_id, card_id):
     """Adds a card to a team's inventory and marks the card as used.
     Occurs when a team member scans a card."""
@@ -77,7 +80,7 @@ def redeem_card(team_id, card_id):
                     'rarity': item_rarity, 'image': item_image})
 
 
-@app.route('/<team_id>/chests/redeem/<chest_id>/')
+@app.route('/<team_id>/chests/redeem/<chest_id>')
 def redeem_chest(team_id, chest_id):
     """Verifies that a team has all the keys for a particular chest and selects
     a random reward for the team. This process removes the keys and chest from
@@ -149,14 +152,14 @@ def select_reward(rewards, reward_level):
         return rewards[random.randint(0, num_rewards - 1)]
 
 
-@app.route('/<team_id>/rewards/redeem/<reward_id>/')
+@app.route('/<team_id>/rewards/redeem/<reward_id>')
 def redeem_reward(team_id, reward_id):
     g.cur.execute('DELETE FROM team_rewards WHERE ROWID = ('
                   'SELECT ROWID FROM team_rewards WHERE team_id = ? '
                   'AND reward_id = ? LIMIT 1)', (team_id, reward_id))
 
 
-@app.route('/<team_id>/items/')
+@app.route('/<team_id>/items')
 def get_team_items(team_id):
     items = []
     g.cur.execute('SELECT item_id, name, description, is_chest, rarity, image '
@@ -174,7 +177,7 @@ def get_team_items(team_id):
     return jsonify(items)
 
 
-@app.route('/<team_id>/rewards/')
+@app.route('/<team_id>/rewards')
 def get_team_rewards(team_id):
     rewards = []
     g.cur.execute('SELECT reward_id, name, description, rarity '
@@ -222,7 +225,7 @@ def get_chest_keys(chest_id):
     return relationships[0]
 
 
-@app.route('/chests/')
+@app.route('/chests')
 def get_all_chest_keys():
     relationships = []
     used_chests = []
@@ -242,7 +245,7 @@ def get_all_chest_keys():
     return jsonify(relationships)
 
 
-@app.route('/cards/list/')
+@app.route('/cards/list')
 def get_cards():
     cards = []
     g.cur.execute('SELECT id, valid, type FROM cards')
@@ -254,7 +257,7 @@ def get_cards():
     return jsonify(cards)
 
 
-@app.route('/items/list/')
+@app.route('/items/list')
 def get_items():
     items = []
     g.cur.execute('SELECT id, name, description, is_chest, rarity, image '
@@ -270,7 +273,7 @@ def get_items():
     return jsonify(items)
 
 
-@app.route('/teams/list/')
+@app.route('/teams/list')
 def get_teams():
     teams = []
     g.cur.execute('SELECT id, name, colour FROM teams')
