@@ -24,6 +24,8 @@ def jsonify(data, status_code=200):
 
 @app.before_request
 def check_database():
+    """Checks that the database exists and throws an error if it isn't.
+    Otherwise, adds the database connection and cursor to a global object."""
     if request.method == 'OPTIONS':
         return
 
@@ -64,9 +66,11 @@ def redeem_card(team_id, card_id):
     if card_redeemed:
         return jsonify({'error': 'Card has already been redeemed'}, 400)
 
+    # Mark the card as redeemed and add it to the team inventory.
     g.cur.execute('UPDATE cards SET redeemed = 1 WHERE id = ?', (card_id,))
     g.cur.execute('INSERT INTO team_items VALUES (?, ?)', (team_id, card_type))
 
+    # Find the item that belongs to the card, so that we can show it on screen.
     g.cur.execute('SELECT id, name, description, is_chest, rarity, image '
                   'FROM items WHERE id = ?', (card_type,))
     row = g.cur.fetchone()
@@ -164,6 +168,7 @@ def redeem_chest(team_id, chest_id):
 
 @app.route('/<team_id>/rewards/redeem/<reward_id>')
 def redeem_reward(team_id, reward_id):
+    """Redeeming a reward simply deletes it from the database."""
     g.cur.execute('DELETE FROM team_rewards WHERE ROWID = ('
                   'SELECT ROWID FROM team_rewards WHERE team_id = ? '
                   'AND reward_id = ? LIMIT 1)', (team_id, reward_id))
@@ -171,6 +176,7 @@ def redeem_reward(team_id, reward_id):
 
 @app.route('/<team_id>/items')
 def get_team_items(team_id):
+    """Returns a list of items that a team owns."""
     items = []
     g.cur.execute('SELECT item_id, name, description, is_chest, rarity, image '
                   'FROM team_items '
@@ -189,6 +195,7 @@ def get_team_items(team_id):
 
 @app.route('/<team_id>/rewards')
 def get_team_rewards(team_id):
+    """Returns a list of rewards that a team has."""
     rewards = []
     g.cur.execute('SELECT reward_id, name, description, rarity '
                   'FROM team_rewards '
@@ -206,6 +213,7 @@ def get_team_rewards(team_id):
 
 @app.route('/chests')
 def get_all_chest_keys():
+    """Returns a list of which keys each chest requires."""
     g.cur.execute('SELECT chest_id, key_id FROM chest_keys')
     relationships = {}
     for result in g.cur:
@@ -221,6 +229,7 @@ def get_all_chest_keys():
 
 @app.route('/cards/list')
 def get_cards():
+    """Returns a list of all cards."""
     cards = []
     g.cur.execute('SELECT id, redeemed, type FROM cards')
     for result in g.cur:
@@ -232,6 +241,7 @@ def get_cards():
 
 @app.route('/items/list')
 def get_items():
+    """Returns a list of all items."""
     items = []
     g.cur.execute('SELECT id, name, description, is_chest, rarity, image '
                   'FROM items')
@@ -247,6 +257,7 @@ def get_items():
 
 @app.route('/teams/list')
 def get_teams():
+    """Returns a list of all teams."""
     teams = []
     g.cur.execute('SELECT id, name, colour FROM teams')
     for result in g.cur:
@@ -257,6 +268,7 @@ def get_teams():
 
 @app.route('/cards/reactivate/<card_id>')
 def reactivate_card(card_id):
+    """Reactivates the specified card by marking it as not redeemed."""
     g.cur.execute('UPDATE cards SET redeemed = 0 WHERE id = ?', (card_id,))
     if g.cur.rowcount != 1:
         return jsonify({'error': 'Card with ID %s not found' % card_id}, 400)
