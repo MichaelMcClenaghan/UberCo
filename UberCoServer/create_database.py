@@ -22,7 +22,7 @@ with open('data/cards.csv') as cards:
     reader = csv.reader(cards)
     for card in reader:
         try:
-            cursor.execute('INSERT INTO card VALUES (?, ?, 1)', card)
+            cursor.execute('INSERT INTO cards VALUES (?, ?, 1)', card)
         except DatabaseError, e:
             print 'Error adding card %s (%s)' % (card[0], e)
 
@@ -31,7 +31,7 @@ with open('data/items.csv') as items:
     reader = csv.reader(items, delimiter='|')
     for item in reader:
         try:
-            cursor.execute('INSERT INTO item VALUES (?, ?, ?, ?, ?, ?)', item)
+            cursor.execute('INSERT INTO items VALUES (?, ?, ?, ?, ?, ?)', item)
         except DatabaseError, e:
             print 'Error adding item %s (%s)' % (item[1], e)
 
@@ -40,7 +40,7 @@ with open('data/teams.csv') as teams:
     reader = csv.reader(teams)
     for team in reader:
         try:
-            cursor.execute('INSERT INTO team VALUES (?, ?, ?)', team)
+            cursor.execute('INSERT INTO teams VALUES (?, ?, ?)', team)
         except DatabaseError, e:
             print 'Error adding team %s (%s)' % (team[1], e)
 
@@ -60,7 +60,7 @@ with open('data/rewards.csv') as rewards:
     reader = csv.reader(rewards, delimiter='|')
     for reward in reader:
         try:
-            cursor.execute('INSERT INTO reward VALUES (?, ?, ?, ?, ?)', reward)
+            cursor.execute('INSERT INTO rewards VALUES (?, ?, ?, ?, ?)', reward)
         except DatabaseError, e:
             print 'Error adding reward %s (%s)' % (reward[1], e)
 

@@ -10,7 +10,7 @@ while True:
     if response == '':
         break
 
-    cursor.execute('UPDATE card SET valid = 1 WHERE id = ?', (response,))
+    cursor.execute('UPDATE cards SET valid = 1 WHERE id = ?', (response,))
     if cursor.rowcount != 1:
         print 'Card with ID %s not found' % response
     db.commit()

@@ -1,10 +1,10 @@
-CREATE TABLE card (
+CREATE TABLE cards (
   id    INTEGER NOT NULL PRIMARY KEY,
   type  INTEGER,
   valid INTEGER
 );
 
-CREATE TABLE item (
+CREATE TABLE items (
   id          INTEGER NOT NULL PRIMARY KEY,
   name        TEXT,
   description TEXT,
@@ -13,7 +13,7 @@ CREATE TABLE item (
   image       TEXT
 );
 
-CREATE TABLE reward (
+CREATE TABLE rewards (
   id              INTEGER NOT NULL PRIMARY KEY,
   name            TEXT,
   description     TEXT,
@@ -21,7 +21,7 @@ CREATE TABLE reward (
   numberRemaining INTEGER
 );
 
-CREATE TABLE team (
+CREATE TABLE teams (
   id     INTEGER NOT NULL PRIMARY KEY,
   name   TEXT,
   colour TEXT

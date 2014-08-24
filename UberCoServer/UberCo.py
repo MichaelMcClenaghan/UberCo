@@ -47,7 +47,7 @@ def not_found(error):
 def redeem_card(team_id, card_id):
     """Adds a card to a team's inventory and marks the card as used.
     Occurs when a team member scans a card."""
-    g.cursor.execute('SELECT id, valid, type FROM card WHERE id = ?',
+    g.cursor.execute('SELECT id, valid, type FROM cards WHERE id = ?',
                      (card_id,))
     row = g.cursor.fetchone()
     if row is None:
@@ -59,13 +59,13 @@ def redeem_card(team_id, card_id):
     if card_valid == 0:
         return jsonify({'error': 'Card has already been redeemed'}, 400)
 
-    g.cursor.execute('UPDATE card SET valid = 0 WHERE id = ?', (card_id,))
+    g.cursor.execute('UPDATE cards SET valid = 0 WHERE id = ?', (card_id,))
     g.cursor.execute('INSERT INTO team_items VALUES (?, ?)', (team_id,
                                                               card_type))
     g.db.commit()
 
     g.cursor.execute('SELECT id, name, description, is_chest, rarity, image '
-                     'FROM item WHERE id = ?', (card_type,))
+                     'FROM items WHERE id = ?', (card_type,))
     row = g.cursor.fetchone()
     if row is None:
         return jsonify({'error': 'Failed to find the item that belongs to '
@@ -87,7 +87,7 @@ def redeem_chest(team_id, chest_id):
     rewards = []
 
     g.cursor.execute('SELECT item_id, rarity, is_chest FROM team_items '
-                     'JOIN item ON item.id = team_items.item_id '
+                     'JOIN items ON items.id = team_items.item_id '
                      'WHERE team_id = ? AND item_id = ?', (team_id, chest_id))
     row = g.cursor.fetchone()
     if row is None:
@@ -118,7 +118,7 @@ def redeem_chest(team_id, chest_id):
     g.db.commit()
 
     g.cursor.execute('SELECT id, name, description, rarity, numberRemaining '
-                     'FROM reward WHERE numberRemaining != 0')
+                     'FROM rewards WHERE numberRemaining != 0')
     results = g.cursor.fetchall()
     if len(results) == 0:
         return jsonify({'error': 'There are no rewards left!'}, 400)
@@ -133,8 +133,10 @@ def redeem_chest(team_id, chest_id):
 
     reward = select_reward(rewards, item_rarity)
 
-    g.cursor.execute('UPDATE reward SET numberRemaining = numberRemaining - 1 '
-                     'WHERE id = ?', (reward['id'],))
+    if reward['remaining'] > 0:
+        g.cursor.execute('UPDATE rewards SET numberRemaining = '
+                         'numberRemaining - 1 '
+                         'WHERE id = ?', (reward['id'],))
     g.cursor.execute('INSERT INTO team_rewards VALUES (?, ?)',
                      (team_id, reward['id']))
 
@@ -161,7 +163,7 @@ def get_team_items(team_id):
     items = []
     g.cursor.execute('SELECT item_id, name, description, is_chest, rarity,'
                      'image FROM team_items '
-                     'JOIN item ON item.id = team_items.item_id '
+                     'JOIN items ON items.id = team_items.item_id '
                      'WHERE team_id=?', (team_id,))
     results = g.cursor.fetchall()
     for result in results:
@@ -179,7 +181,7 @@ def get_team_rewards(team_id):
     rewards = []
     g.cursor.execute('SELECT reward_id, name, description, rarity '
                      'FROM team_rewards '
-                     'JOIN reward ON reward.id = team_rewards.reward_id '
+                     'JOIN rewards ON rewards.id = team_rewards.reward_id '
                      'WHERE team_id = ?', (team_id,))
     results = g.cursor.fetchall()
 
@@ -245,7 +247,7 @@ def get_all_chest_keys():
 @app.route('/cards/list/')
 def get_cards():
     cards = []
-    g.cursor.execute('SELECT id, valid, type FROM card')
+    g.cursor.execute('SELECT id, valid, type FROM cards')
     results = g.cursor.fetchall()
     for result in results:
         card_id, card_valid, card_type = result
@@ -258,7 +260,7 @@ def get_cards():
 def get_items():
     items = []
     g.cursor.execute('SELECT id, name, description, is_chest, rarity, image '
-                     'FROM item')
+                     'FROM items')
     results = g.cursor.fetchall()
     for result in results:
         item_id, item_name, item_description, item_is_chest, item_rarity, \
@@ -273,7 +275,7 @@ def get_items():
 @app.route('/teams/list/')
 def get_teams():
     teams = []
-    g.cursor.execute('SELECT id, name, colour FROM team')
+    g.cursor.execute('SELECT id, name, colour FROM teams')
     results = g.cursor.fetchall()
     for result in results:
         team_id, team_name, team_colour = result
