@@ -10,7 +10,8 @@ from flask import request
 from flask_cors import CORS
 
 app = Flask(__name__)
-cors = CORS(app, headers=['Content-Type', 'X-Requested-With'])
+app.debug = True
+cors = CORS(app, headers=['Content-Type', 'X-Requested-With', 'Accept'])
 
 
 def jsonify(data, status_code=200):
@@ -65,6 +66,8 @@ def redeem_card(team_id, card_id):
     g.cur.execute('INSERT INTO team_items VALUES (?, ?)', (team_id, card_type))
     g.db.commit()
 
+    print 'team_items internal ID:', g.cur.lastrowid
+
     g.cur.execute('SELECT id, name, description, is_chest, rarity, image '
                   'FROM items WHERE id = ?', (card_type,))
     row = g.cur.fetchone()
@@ -87,33 +90,43 @@ def redeem_chest(team_id, chest_id):
     the team's inventory."""
     rewards = []
 
-    g.cur.execute('SELECT item_id, rarity, is_chest FROM team_items '
+    g.cur.execute('SELECT team_items.ROWID, item_id, rarity, is_chest '
+                  'FROM team_items '
                   'JOIN items ON items.id = team_items.item_id '
                   'WHERE team_id = ? AND item_id = ?', (team_id, chest_id))
     row = g.cur.fetchone()
     if row is None:
         return jsonify({'error': 'Your team does not own this chest!'}, 400)
 
-    item_id, item_rarity, is_chest = row
-    if is_chest == 0:
+    internal_id, item_id, item_rarity, is_chest = row
+    if not is_chest:
         return jsonify({'error': 'Attempting to redeem key, not chest'}, 400)
 
-    try:
-        chest_keys = get_chest_keys(chest_id)['keys']
-        items = get_team_item_ids(team_id)
-    except:
-        return jsonify({'error': 'Failed to get required keys!'}, 400)
+    print 'Unlocking chest %s with internal ID %s' % (item_id, internal_id)
 
-    for item in chest_keys:
+    g.cur.execute('SELECT key_id FROM chest_keys WHERE chest_id = ?',
+                  (chest_id,))
+    keys_required = [row[0] for row in g.cur]
+
+    g.cur.execute('SELECT item_id FROM team_items WHERE team_id = ?',
+                  (team_id,))
+    team_items = [row[0] for row in g.cur]
+
+    print 'Keys required:', repr(keys_required)
+    print 'Items owned:', repr(team_items)
+
+    for key in keys_required:
         try:
-            items.remove(item)
+            team_items.remove(key)
         except ValueError:
             return jsonify({'error': 'Your team does not have the '
                                      'required keys!'}, 400)
 
+    print 'Items left: ', repr(team_items)
+
     # Remove required keys and the chest from the team inventory
-    chest_keys.append(chest_id)
-    for item in chest_keys:
+    keys_required.append(chest_id)
+    for item in keys_required:
         g.cur.execute('DELETE FROM team_items '
                       'WHERE team_id = ? AND item_id = ?', (team_id, item))
     g.db.commit()
@@ -140,7 +153,7 @@ def redeem_chest(team_id, chest_id):
                       'WHERE id = ?', (reward['id'],))
     g.cur.execute('INSERT INTO team_rewards VALUES (?, ?)', (team_id,
                                                              reward['id']))
-    g.commit()
+    g.db.commit()
 
     return jsonify(reward)
 
@@ -195,37 +208,6 @@ def get_team_rewards(team_id):
     return jsonify(rewards)
 
 
-def get_team_item_ids(team_id):
-    items = []
-    g.cur.execute('SELECT item_id FROM team_items WHERE team_id = ?',
-                  (team_id,))
-    results = g.cur.fetchall()
-    for result in results:
-        item_id = result[0]
-        items.append(item_id)
-    return items
-
-
-def get_chest_keys(chest_id):
-    relationships = []
-    used_chests = []
-
-    g.cur.execute('SELECT chest_id, key_id FROM chest_keys '
-                  'WHERE chest_id = ?', (chest_id,))
-    results = g.cur.fetchall()
-
-    for result in results:
-        chest_id, key_id = result
-        if used_chests.__contains__(chest_id):
-            for relationship in relationships:
-                if relationship['chest'] == chest_id:
-                    relationship['keys'].append(key_id)
-        else:
-            relationships.append({'chest': chest_id, 'keys': [key_id]})
-        used_chests.append(chest_id)
-    return relationships[0]
-
-
 @app.route('/chests')
 def get_all_chest_keys():
     relationships = []
@@ -236,7 +218,7 @@ def get_all_chest_keys():
 
     for result in results:
         chest_id, key_id = result
-        if used_chests.__contains__(chest_id):
+        if chest_id in used_chests:
             for relationship in relationships:
                 if relationship['chest'] == chest_id:
                     relationship['keys'].append(key_id)
@@ -250,8 +232,7 @@ def get_all_chest_keys():
 def get_cards():
     cards = []
     g.cur.execute('SELECT id, redeemed, type FROM cards')
-    results = g.cur.fetchall()
-    for result in results:
+    for result in g.cur:
         card_id, card_redeemed, card_type = result
         cards.append({'id': card_id, 'redeemed': bool(card_redeemed),
                       'type': card_type})
@@ -263,8 +244,7 @@ def get_items():
     items = []
     g.cur.execute('SELECT id, name, description, is_chest, rarity, image '
                   'FROM items')
-    results = g.cur.fetchall()
-    for result in results:
+    for result in g.cur:
         item_id, item_name, item_description, item_is_chest, item_rarity, \
             item_image = result
         items.append({'id': item_id, 'name': item_name,
@@ -278,8 +258,7 @@ def get_items():
 def get_teams():
     teams = []
     g.cur.execute('SELECT id, name, colour FROM teams')
-    results = g.cur.fetchall()
-    for result in results:
+    for result in g.cur:
         team_id, team_name, team_colour = result
         teams.append({'id': team_id, 'name': team_name, 'colour': team_colour})
     return jsonify(teams)
@@ -289,7 +268,7 @@ def get_teams():
 def reactivate_card(card_id):
     g.cur.execute('UPDATE cards SET redeemed = 0 WHERE id = ?', (card_id,))
     if g.cur.rowcount != 1:
-        return jsonify({'error': 'Card with ID %s not found' % card_id})
+        return jsonify({'error': 'Card with ID %s not found' % card_id}, 400)
     return jsonify({'success': True})
 
 if __name__ == '__main__':

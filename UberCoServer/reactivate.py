@@ -6,7 +6,7 @@ db = sqlite3.connect('database.db')
 cur = db.cursor()
 
 while True:
-    response = raw_input('Scan card to reactivate: 1')
+    response = raw_input('Scan card to reactivate: ')
     if response == '':
         break
 
