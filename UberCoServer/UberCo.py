@@ -1,4 +1,6 @@
+from collections import Counter
 import json
+import math
 import os
 import random
 import sqlite3
@@ -130,14 +132,39 @@ def redeem_chest(team_id, chest_id):
             return jsonify({'error': 'Your team does not have the '
                                      'required keys!'}, 400)
 
+    owned_rewards = json.loads(get_team_rewards(team_id).data)
+    owned_reward_ids = [r['id'] for r in owned_rewards]
+    rarity_counts = Counter(r['rarity'] for r in owned_rewards)
+    commons = rarity_counts[1]
+    rares = rarity_counts[2]
+
+    bonus_chance = item_rarity == 2
+
+    # This ensures that teams will get a minimum of one rare item for every
+    # three rewards they redeem
+    rare_chance = 20 if bonus_chance else 10
+    rare_chance += {0: 0, 1: 10, 2: 40, 3: 100}[commons - rares * 2]
+    rare_chance = min(100, rare_chance)
+
+    common_chance = 100 - rare_chance
+    chances = [1] * common_chance + [2] * rare_chance
+    selected_rarity = random.choice(chances)
+
+    print "Odds: %d%% rare, %d%% common" % (rare_chance, common_chance)
+
     # Grab a list of available rewards
     g.cur.execute('SELECT id, name, description, rarity, numberRemaining '
-                  'FROM rewards '
-                  'WHERE numberRemaining != 0 AND rarity <= ?', (item_rarity,))
+                  'FROM rewards WHERE numberRemaining != 0 '
+                  'AND rarity = ?', (selected_rarity,))
+
     rewards = []
     for result in g.cur:
         reward_id, reward_name, reward_description, reward_rarity, \
             rewards_remaining = result
+
+        if reward_id in owned_reward_ids and reward_rarity == 2:
+            continue
+
         rewards.append({'id': reward_id, 'name': reward_name,
                         'description': reward_description,
                         'rarity': reward_rarity,
