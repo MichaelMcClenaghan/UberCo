@@ -155,8 +155,8 @@ def redeem_chest(team_id, chest_id):
         g.cur.execute('UPDATE rewards SET numberRemaining = '
                       'numberRemaining - 1 '
                       'WHERE id = ?', (reward['id'],))
-    g.cur.execute('INSERT INTO team_rewards VALUES (?, ?)', (team_id,
-                                                             reward['id']))
+    g.cur.execute('INSERT INTO team_rewards VALUES (?, ?, 0)', (team_id,
+                                                                reward['id']))
 
     # Remove required keys and the chest from the team inventory
     for item in items_consumed:
@@ -169,7 +169,7 @@ def redeem_chest(team_id, chest_id):
 @app.route('/<team_id>/rewards/redeem/<reward_id>')
 def redeem_reward(team_id, reward_id):
     """Redeeming a reward simply deletes it from the database."""
-    g.cur.execute('DELETE FROM team_rewards WHERE ROWID = ('
+    g.cur.execute('UPDATE team_rewards SET redeemed = 1 WHERE ROWID = ('
                   'SELECT ROWID FROM team_rewards WHERE team_id = ? '
                   'AND reward_id = ? LIMIT 1)', (team_id, reward_id))
 
