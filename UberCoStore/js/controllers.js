@@ -177,12 +177,16 @@ function InventoryController($scope, $http) {
         $scope.selectedReward = item;
     };
 
-    $scope.getRarityString = function (rarity) {
-        switch(rarity){
+    $scope.getRarityString = function (item) {
+        console.log(item);
+        if (item.type == "item") {
+            return "";
+        }
+        switch(item.rarity){
             case 1:
-                return "Very Common";
-            case 2:
                 return "Common";
+            case 2:
+                return "Rare";
             case 3:
                 return "Uncommon";
             case 4:

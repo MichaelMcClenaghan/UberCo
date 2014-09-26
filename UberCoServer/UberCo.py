@@ -216,7 +216,7 @@ def get_team_items(team_id):
         items.append({'id': item_id, 'name': item_name,
                       'description': item_description,
                       'is_chest': item_is_chest, 'rarity': item_rarity,
-                      'image': item_image})
+                      'image': item_image, 'type': 'item'})
     return jsonify(items)
 
 
@@ -234,7 +234,7 @@ def get_team_rewards(team_id):
         reward_id, reward_name, reward_description, reward_rarity = result
         rewards.append({'id': reward_id, 'name': reward_name,
                         'description': reward_description,
-                        'rarity': reward_rarity, 'image': 'reward.png'})
+                        'rarity': reward_rarity, 'image': 'reward.png', 'type': 'reward'})
     return jsonify(rewards)
 
 
