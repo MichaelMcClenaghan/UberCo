@@ -2,7 +2,9 @@ body {
     text-align: left;
     color: #828282;
     font-size: 14px;
-    background-color: #262627;
+    background: #dbe0e3 url(../img/background.jpg);
+    background-attachment: fixed;
+    background-size: contain;
 }
 
 img {
@@ -40,6 +42,20 @@ img {
     text-align: center;
     font-weight: bold;
     background-color: #1F1F1F;
+    transition: background-color 0.2s;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+.team-button {
+    float: left;
+    margin-left: 50px;
+    margin-top: 20px;
+    width: 135px;
+    height: 60px;
+    text-align: center;
+    font-weight: bold;
+    /* background-color: #1F1F1F; */
     transition: background-color 0.2s;
     border-bottom-left-radius: 5px;
     border-bottom-right-radius: 5px;
@@ -119,12 +135,26 @@ img {
 }
 
 #team-selector {
-    width: 580px;
-    margin-top: 200px;
+    width: 700px;
+    margin-top: 30px;
+}
+
+#selection-overlay {
+    position: absolute;
+    top: 230px;
+    width: 700px;
+    text-align: center;
+}
+
+#teams-list {
+    width: 400px;
+    height: 20px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 #main-container {
-    background-color: #1F1F1F;
+    background-color: rgba(20,10,0,0.6);
     height: 920px;
 }
 
