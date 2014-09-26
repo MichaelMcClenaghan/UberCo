@@ -43,7 +43,7 @@
             <div id="inventory">
                 <div class="inventory-item border" ng-repeat="item in inventory" ng-click="setSelectedItem(item)">
                     <img ng-src={{getImageString(item.image)}} style="width: 135px; height: 120px;">
-                    {{getFormattedName(item.name, 18)}}
+                    {{getFormattedName(item.name, 17)}}
                 </div>
                 <p style="padding: 10px" class="text-center" ng-show="!inventory[0]">
                     You currently have no items in your inventory!  Scan a card to add it to your personal library.
