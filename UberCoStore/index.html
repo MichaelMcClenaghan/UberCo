@@ -19,11 +19,17 @@
 </head>
 <body ng-controller="InventoryController">
     <div id="team-selector" class="centered">
-        <img src="img/Uber%20Co.png" style="width: 300px; margin-top: -200px; margin-left: auto; margin-right: auto;">
-        <h3 class="text-center">Select your team to begin</h3>
-        <div class="inventory-item" ng-repeat="team in teams" style="background-color: {{team.colour}}" ng-click="selectTeam(team)">
-            <h3>{{team.name}}</h3>
+        <img class="centered" src="img/select-team.png">
+        <div id="selection-overlay">
+            <h3 class="text-center">Select your team to begin</h3>
+            <div id="teams-list">
+                <div class="team-button" ng-repeat="team in teams" style="background-color: {{team.colour}}" ng-click="selectTeam(team)">
+                    <h3>{{team.name}}</h3>
+                </div>
+            </div>
         </div>
+
+
     </div>
     <div id="main-container" class="container border" style="display:none">
         <img src="img/Uber%20Co.png" style="width: 300px;">
@@ -40,7 +46,7 @@
                     {{getFormattedName(item.name, 18)}}
                 </div>
                 <p style="padding: 10px" class="text-center" ng-show="!inventory[0]">
-                    You currently have no items in your inventory!  Scan a card to add it to your inventory.
+                    You currently have no items in your inventory!  Scan a card to add it to your personal library.
                 </p>
             </div>
             <div id="rewards" style="display: none;">
@@ -49,7 +55,7 @@
                     {{getFormattedName(reward.name, 18)}}
                 </div>
                 <p style="padding: 10px" class="text-center" ng-show="!rewards[0]">
-                    You currently have no rewards!  Open chests to earn rewards!.
+                    You currently have no rewards!  Open books to earn rewards!.
                 </p>
             </div>
         </div>
@@ -65,14 +71,14 @@
                 {{selectedItem.description}}
             </p>
             <h3 class="centered-text" style="color: #ddaa00">{{getRarityString(selectedItem.rarity)}}</h3>
-            <h4 style="padding: 10px; padding-bottom: 0px;" ng-show="selectedItem.is_chest">Keys Required:</h4>
+            <h4 style="padding: 10px; padding-bottom: 0px;" ng-show="selectedItem.is_chest">Pages Required:</h4>
             <ul ng-show='selectedItem.is_chest'>
                 <li ng-repeat="key in requiredKeys" class="key-list-item" ng-class="{owned:key.owned}">{{getItemName(key.id)}}</li>
             </ul>
-            <div id="open-chest" class="open-button" ng-show="selectedItem.is_chest" ng-class="{inactive:!canOpenChest(selectedItem.id, selectedItem.is_chest)}">Open Chest!</div>
+            <div id="open-chest" class="open-button" ng-show="selectedItem.is_chest" ng-class="{inactive:!canOpenChest(selectedItem.id, selectedItem.is_chest)}">Open Book!</div>
         </div>
         <div class="spacer2"></div>
-        <h2 class="text-center">Scan an item to add to your inventory.</h2>
+        <h2 class="text-center">Scan an item to add to your personal library.</h2>
         <div class="scan-area centered">
 <!--
             <input id="item-to-add" tabindex="0" type="text">
