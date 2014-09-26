@@ -180,7 +180,11 @@ function InventoryController($scope, $http) {
     $scope.getRarityString = function (item) {
         console.log(item);
         if (item.type == "item") {
-            return "";
+            if (item.is_chest == 1) {
+                return "";
+            } else {
+                return "Complete the set to win a prize!";
+            }
         }
         switch(item.rarity){
             case 1:

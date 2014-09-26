@@ -70,7 +70,7 @@
             <p style="padding: 10px;">
                 {{selectedItem.description}}
             </p>
-            <h3 class="centered-text" style="color: #ddaa00">{{getRarityString(selectedItem)}}</h3>
+            <h3 class="centered-text" style="color: #ddaa00; padding: 10px;">{{getRarityString(selectedItem)}}</h3>
             <h4 style="padding: 10px; padding-bottom: 0px;" ng-show="selectedItem.is_chest">Pages Required:</h4>
             <ul ng-show='selectedItem.is_chest'>
                 <li ng-repeat="key in requiredKeys" class="key-list-item" ng-class="{owned:key.owned}">{{getItemName(key.id)}}</li>
