@@ -42,7 +42,7 @@
         <div id="main-content" class="border">
             <div id="inventory">
                 <div class="inventory-item border" ng-repeat="item in inventory" ng-click="setSelectedItem(item)">
-                    <img ng-src={{getImageString(item.image)}} style="width: 135px; height: 120px;">
+                    <img ng-src={{getImageString(item.image)}} style="width: 135px; height: 135px;">
                     {{getFormattedName(item.name, 17)}}
                 </div>
                 <p style="padding: 10px" class="text-center" ng-show="!inventory[0]">
