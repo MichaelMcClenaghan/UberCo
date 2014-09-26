@@ -217,8 +217,10 @@ function InventoryController($scope, $http) {
         $scope.selectedTeam = team;
         $scope.getTeamInventory();
         $scope.getTeamRewards();
+        $("#selection-overlay").css("top", 200)
         $("#team-selector").hide('slide', {'duration': 300, 'direction': 'left'}, function(){
             $("#main-container").show('slide',{'duration': 300, 'direction': 'right'});
+            $("#selection-overlay").css("top", 230)
         });
         //$("#item-to-add").focus();
     };
@@ -286,8 +288,12 @@ function InventoryController($scope, $http) {
     });
 
     $scope.logout = function () {
+        $("#selection-overlay").css("top", 200)
         $("#main-container").hide('slide', {'duration': 300, 'direction': 'right'}, function(){
-            $("#team-selector").show('slide',{'duration': 300, 'direction': 'left'});
+            $("#team-selector").show('slide',{'duration': 300, 'direction': 'left'}, function() {
+                $("#selection-overlay").css("top", 230)
+            });
+
         });
         $scope.selectedTeam = undefined;
     }
