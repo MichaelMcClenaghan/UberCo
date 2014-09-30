@@ -24,7 +24,7 @@ with open('data/cards.csv') as cards:
         try:
             cur.execute('INSERT INTO cards VALUES (?, ?, 0)', card)
             # Uncomment this line to add every card to the inventory of team 1
-            cur.execute('INSERT INTO team_items VALUES (1, ?)', (card[1],))
+            #cur.execute('INSERT INTO team_items VALUES (1, ?)', (card[1],))
         except DatabaseError as e:
             print 'Error adding card %s (%s)' % (card[0], e)
 
